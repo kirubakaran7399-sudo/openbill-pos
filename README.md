@@ -1,97 +1,136 @@
-# The Retro Cafeteria: POS Billing Software
+# OpenBill POS — The Retro Cafeteria (Version 3.0)
 
-**Version:** 3.0 (Offline-First Single Outlet Edition)  
-**Location:** Gandhi Road, Near Varadaraja Perumal Temple, Kanchipuram, Tamil Nadu - 631501  
-**Statutory GSTIN:** `33AABCR1234F1Z5` | **FSSAI Licence:** `11223344556677`
+[![GitHub Repo](https://img.shields.io/badge/GitHub-openbill--pos-171717?style=flat&logo=github)](https://github.com/kirubakaran7399-sudo/openbill-pos)
+[![Version](https://img.shields.io/badge/Version-3.0.0-C82026?style=flat)]()
+[![Tests](https://img.shields.io/badge/Tests-39%20Passed-emerald?style=flat)]()
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat)]()
+[![Architecture](https://img.shields.io/badge/Architecture-100%25%20Offline--First-orange?style=flat)]()
+[![GST](https://img.shields.io/badge/GST-5%25%20Composite%20(SAC%209963)-purple?style=flat)]()
 
----
-
-## Overview
-
-A high-speed, zero-lag, offline-first restaurant billing POS software built specifically for **The Retro Cafeteria** based on **Design Specification Version 3.0** and incorporating core architectural components from **OpenBill** (semantic thermal receipt generation, 80mm & 58mm ESC/POS layout, business date reconciliation, and keyboard-first billing).
-
----
-
-## Key Features
-
-1. **High-Speed Billing & Order Types:**
-   - **Counter Sale (`F1`):** Instant walk-in billing. Daily token numbers starting from #1. Print tax invoices in 3 steps under 15 seconds.
-   - **Dine-in Tables (`F2`):** Floor layout across Main Hall and AC Section. Multi-round ordering. Table move & merge support.
-   - **Takeaway Parcel (`F3`):** Customer name, phone, token number, and hold-order option (`F9`).
-   - **Held Orders (`F4`):** 1-click order parking and resumption.
-
-2. **Statutory Indian GST Compliance (Tamil Nadu Edition):**
-   - 5% Composite GST split equally into **2.5% CGST + 2.5% SGST** with **SAC Code 9963** (Restaurant Service).
-   - Consecutive bill numbering per Indian financial year: `YYYY-YY/NNNNNN` (e.g. `2026-27/000001`), April 1 to March 31. Numbers never repeat, never reset mid-year, and are never deleted.
-   - **Bill Cancellation Audit:** Requires Owner PIN and mandatory text reason. Cancelled bills are preserved in the series, marked `CANCELLED`, and excluded from sales & tax totals.
-   - **Reprints:** Any reprinted bill automatically bears a prominent `*** DUPLICATE COPY ***` banner.
-   - Support for both standard **Tax Invoice** and Composition Scheme **Bill of Supply**.
-
-3. **Thermal Receipt Printing Engine (Adapted from OpenBill):**
-   - Monospace ESC/POS layout engine supporting both **80 mm (48 columns)** and **58 mm (32 columns)** receipt paper rolls.
-   - **Kitchen Order Tickets (KOT):** Prints on the same receipt printer (`F6`). Only prints new items added since the previous round. Double-height text, dish names, quantities, and instructions without prices.
-   - In-app **Thermal Receipt Preview** and standard Windows thermal printing (`@media print` formatted for zero margins).
-   - Test print utility in Settings.
-
-4. **Security & Role-Based Access Control (4-Digit PIN):**
-   - **Owner (PIN: `1234`):** Full administrative rights (menu editing, pricing, settings, full reports, cancelling bills, unlimited discounts).
-   - **Cashier (PIN: `0000`):** Order taking, printing bills, reprinting, discounts up to owner-set limit (default 10%).
-   - Auto-lock after 5 minutes of idle time.
-
-5. **Menu & Product Management:**
-   - Add, edit, duplicate, and delete products.
-   - Quick short-codes (e.g. `CB` for Chicken Burger, `PF` for Peri Peri Fries) for keyboard-only item addition (`short-code + Enter`).
-   - One-click "Sold Out" toggle.
-   - Bulk price adjustments (+% or +₹) with live preview.
-   - Pre-loaded with official Retro Cafeteria sample items (1-click loadable anytime).
-
-6. **Daily Financial Reports & Z-Report:**
-   - Gross revenue, taxable value, CGST, SGST, roundoff, and net revenue.
-   - Payment tender breakdown: Cash, UPI, and Card.
-   - Expected cash in drawer counter.
-   - Item-wise sales breakdown with revenue ranking.
-   - Statutory GST Summary ready for tax filing.
-   - 1-click **Print Daily Z-Report** slip and **Export to CSV**.
-
-7. **100% Offline & Zero Lag:**
-   - Operates completely offline without requiring internet.
-   - Persistent LocalStorage database with automatic corruption recovery.
-   - 1-click **Export Backup (JSON)** and **Restore Backup**.
+An ultra-responsive, zero-latency, 100% offline restaurant billing POS software built for **The Retro Cafeteria** (Kanchipuram, Tamil Nadu) conforming to Design Specification v3.0 and the OpenBill semantic thermal printing pipeline.
 
 ---
 
-## Getting Started
+## 🎯 Architecture & System Design
 
-### 1-Click Launch (Windows)
-Double-click `start.bat` in this folder, or execute:
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│               THE RETRO CAFETERIA — OPENBILL POS ENGINE                │
+├──────────────────┬──────────────────┬─────────────────┬────────────────┤
+│ Dynamic UPI QR   │ NC Order Alerts  │ Auditor Exports │ Critical Stock │
+│ (Screen & Bill)  │ (WhatsApp Alert) │ (GSTR-1 & 3B)   │ (Single-PC)    │
+│ ISO/IEC 18004    │ PIN Elevation    │ Table 7 B2CS    │ Auto Sold-Out  │
+│ 100% Offline SVG │ ₹0.00 Subtotal   │ CA Register CSV │ 1-Click Refill │
+├──────────────────┴──────────────────┴─────────────────┴────────────────┤
+│                     GUEST DIRECTORY & CAFETERIA CRM                    │
+│   Phone Auto-Lookup • VIP Badges • Repeat Order • 1-Click WhatsApp     │
+├────────────────────────────────────────────────────────────────────────┤
+│                     STATUTORY COMPLIANCE & PRINTING                    │
+│ 5% Composite GST (SAC 9963) • Consecutive Numbers • Xprinter 80mm/58mm │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⚡ Key Capabilities
+
+### 1. Dynamic UPI QR Code (₹0 Machine Cost)
+* **Zero Hardware Rental:** Eliminates monthly soundbox or swipe machine POS charges.
+* **Instant Offline Generation:** Directly generates NPCI ISO/IEC 18004 compliant UPI QR codes with exact bill amounts pre-filled.
+* **Scan to Pay:** Guests scan with Google Pay, PhonePe, Paytm, or BHIM. Amount and store name are pre-populated.
+* **Thermal Bill Print:** Emits UPI VPA and payment notes directly on 80mm receipts.
+
+### 2. Complimentary / Non-Chargeable (NC) Bills
+* **Security Guard:** Strictly requires **Store Owner PIN (`1234`)** via elevation modal.
+* **Mandatory Reasons:** Prompts for audit reasons (`VIP Guest`, `Food Quality Replacement`, `Staff Meal`, `Marketing Promo`, or custom reason).
+* **Automated WhatsApp Alert:** Automatically notifies the owner on WhatsApp with the bill number, cashier name, and waived items list.
+
+### 3. Auditor GST Filing Export (GSTR-1 & GSTR-3B B2CS)
+* **Table 7 B2CS Portal CSV:** Ready for direct upload to `gst.gov.in` under SAC `9963` at 5% GST for Place of Supply `33-Tamil Nadu`.
+* **CA Sales Register CSV:** Complete invoice-by-invoice audit ledger with timestamps, customer phone, GSTIN, taxable base, CGST, SGST, tender mode, and cancellation/NC audit reasons.
+
+### 4. Single-PC Critical Stock Counter
+* **Low Stock Warning:** POS cards pulse an amber warning when stock drops ($\le$ threshold, e.g. `⚠️ 3 left`).
+* **Auto Sold-Out:** Auto-disables items when stock reaches 0 to prevent punching unavailable items.
+* **Quick Refill Manager:** 1-click modal with `-1`, `+1`, `+5`, `+10`, or **Refill All (+25)**.
+
+### 5. Guest Directory & Cafeteria CRM
+* **Counter Auto-Lookup:** Entering a 10-digit mobile number recognizes returning customers, displays their visit stats, and provides a 1-click **Repeat Order** button.
+* **1-Click WhatsApp Greetings:** Send personalized invitations tailored to their favorite dish.
+
+---
+
+## 🚀 Quick Launch
+
+### Windows (1-Click)
+Double-click `start.bat` or run:
 ```cmd
 python server.py
 ```
-The software starts instantly on `http://127.0.0.1:3000` and automatically opens in your default browser.
+The application opens automatically at `http://127.0.0.1:3000`.
 
 ### Running Automated Test Suite
 ```cmd
-npm test
-```
-*or*
-```cmd
 node --test tests/*.test.js
 ```
-Runs the 25 automated regression tests for financial calculations, cart immutability, role permissions, storage sequence, and thermal formatting in ~200ms.
+Runs all **39 automated unit and regression tests** covering financial calculations, cart immutability, role permissions, storage sequence, thermal formatting, and QR encoding in under 200ms.
 
 ---
 
-## Keyboard Shortcuts Quick Reference
+## ⌨️ Keyboard Shortcuts Reference
 
-- `F1`: New Counter Sale
-- `F2`: Dine-in Tables
-- `F3`: New Takeaway
-- `F4`: Open / Held Orders
-- `/` or `Ctrl+F`: Focus Dish Search
-- `code + Enter`: Add Item by Short-Code
-- `F6`: Print Kitchen Slip (KOT)
-- `F8`: Apply Discount
-- `F9`: Hold Order
-- `F12` or `Ctrl+Enter`: Pay & Print Bill
-- `Esc`: Close Modal / Lock
-- `?`: Shortcuts Cheat Sheet
+| Shortcut | Action |
+|---|---|
+| `F1` | New Counter Walk-in Sale |
+| `F2` | Dine-in Tables Floor Plan |
+| `F3` | New Takeaway Parcel |
+| `F4` | Open / Held Orders Drawer |
+| `/` or `Ctrl+F` | Focus Dish Search Bar |
+| `code + Enter` | Instant Short-Code Addition (e.g. `CB` + Enter) |
+| `F6` | Print Kitchen Slip (KOT) |
+| `F8` | Apply Discount |
+| `F9` | Hold / Park Current Order |
+| `F12` or `Ctrl+Enter` | Settle and Print Tax Invoice |
+| `Esc` | Close Open Modals / Dialogs |
+| `?` | Keyboard Shortcuts Cheat Sheet |
+
+---
+
+## 📂 Repository Structure
+
+```text
+openbill-pos/
+├── index.html            # Single-page application UI with responsive panels & modals
+├── app.js                # Core controller, event router, and state manager
+├── style.css             # Brand styling and thermal print styles
+├── server.py             # Local zero-dependency Python server with automated backup APIs
+├── start.bat             # Windows 1-click launcher
+├── package.json          # Project metadata & test scripts
+├── .gitignore            # Git exclusion rules
+├── .gitattributes       # Cross-platform line ending normalization
+├── logo.png              # Retro Cafeteria brand asset
+├── src/
+│   ├── core/
+│   │   ├── auth.js       # 4-digit PIN authentication & role elevation
+│   │   ├── cart.js       # Cart state & kitchen round tracking
+│   │   ├── escpos.js     # Semantic thermal receipt engine (80mm & 58mm)
+│   │   ├── qr.js         # Pure offline QR generator & NPCI UPI URI builder
+│   │   ├── storage.js    # Resilient sales ledger, GSTR-1 export, & CRM engine
+│   │   └── tax.js        # Statutory 5% GST & NC bill calculation engine
+│   └── data/
+│       └── defaultCatalog.js # Preset categories, dishes, and store configuration
+├── tests/
+│   ├── auth.test.js      # PIN and permission tests
+│   ├── cart.test.js      # Cart manipulation and KOT delta tests
+│   ├── escpos.test.js    # Thermal monospace formatting tests
+│   ├── qr.test.js        # Offline QR & UPI string tests
+│   ├── storage.test.js   # Ledger, GSTR-1, and CRM aggregator tests
+│   └── tax.test.js       # Statutory GST & NC financial tests
+└── docs/
+    └── USER_GUIDE.md     # Complete operational manual (Sections 1 to 13)
+```
+
+---
+
+## 📜 License
+Distributed under the MIT License. OpenBill / The Retro Cafeteria Team (2026).
