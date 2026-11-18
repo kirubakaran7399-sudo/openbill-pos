@@ -1,0 +1,282 @@
+/* style.css - The Retro Cafeteria POS Design System (Spec v3.0) */
+
+:root {
+  /* Brand Palette */
+  --brand-black: #171717;
+  --brand-red: #C82026;
+  --brand-white: #FFFFFF;
+  --brand-brown: #6B4226;
+  --brand-brown-subtle: #EFE3D6;
+  --brand-caramel: #C9A27E;
+
+  /* Light Theme Canvas */
+  --color-bg: #F6F2EC;
+  --color-surface: #FFFFFF;
+  --color-border: #E5DDD3;
+  --color-text: #171717;
+  --color-text-muted: #5C534B;
+  --color-primary: #171717;
+  --color-primary-pressed: #2E2E2E;
+  --color-accent: #C82026;
+  --color-secondary: #6B4226;
+  --color-secondary-subtle: #EFE3D6;
+
+  /* Semantic Colors */
+  --color-success: #15803D;
+  --color-success-subtle: #DCFCE7;
+  --color-warning: #B45309;
+  --color-warning-subtle: #FEF3C7;
+  --color-danger: #9B1C1C;
+  --color-danger-subtle: #FDECEA;
+  --color-info: #1D4ED8;
+  --color-info-subtle: #DBEAFE;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Numerals must always be tabular for POS pricing & quantities */
+.tabular-nums, .price, .qty, .total-num, .bill-no, .token-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D1C7BD;
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A89C90;
+}
+
+/* Focus styles for keyboard accessibility (Spec §11 & §14) */
+:focus-visible {
+  outline: 2px solid var(--brand-red);
+  outline-offset: 2px;
+}
+
+/* Component Classes */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+}
+.btn-primary:hover {
+  background-color: var(--color-primary-pressed);
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background-color: var(--brand-brown-subtle);
+  color: var(--brand-brown);
+  border: 1px solid #DFCEBE;
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.btn-secondary:hover {
+  background-color: #E5D5C4;
+}
+
+.btn-danger-outline {
+  background-color: transparent;
+  color: var(--color-danger);
+  border: 1.5px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.btn-danger-outline:hover {
+  background-color: var(--color-danger-subtle);
+}
+
+.chip {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip-brown {
+  background-color: var(--brand-brown-subtle);
+  color: var(--brand-brown);
+}
+
+.chip-black {
+  background-color: var(--brand-black);
+  color: #FFFFFF;
+}
+
+.chip-success {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.chip-warning {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
+.chip-danger {
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger);
+}
+
+/* Dietary indicators */
+.diet-veg {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #16A34A;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px;
+}
+.diet-veg-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #16A34A;
+}
+
+.diet-non-veg {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #DC2626;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px;
+}
+.diet-non-veg-dot {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 7px solid #DC2626;
+}
+
+/* Cart Item Unsent Indicator */
+.cart-item-unsent {
+  border-left: 3px solid var(--brand-red) !important;
+}
+
+/* Table statuses */
+.table-card-free {
+  border: 1.5px solid var(--color-border);
+  background: #FFFFFF;
+}
+.table-card-occupied {
+  border: 1.5px solid var(--brand-brown);
+  background: #FDF9F5;
+}
+.table-card-printed {
+  border: 1.5px solid var(--brand-black);
+  background: #F4F4F4;
+}
+
+/* Thermal receipt paper preview styles */
+.receipt-paper {
+  background-color: #FFFFFF;
+  color: #000000;
+  font-family: 'Courier New', Courier, monospace;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  margin: 0 auto;
+  padding: 16px;
+  white-space: pre-wrap;
+  line-height: 1.25;
+  border: 1px solid #E5E5E5;
+}
+
+.receipt-80mm {
+  width: 380px;
+  font-size: 12px;
+}
+
+.receipt-58mm {
+  width: 280px;
+  font-size: 11px;
+}
+
+/* Print Media Rules */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-area, #printable-area * {
+    visibility: visible;
+  }
+  #printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #FFFFFF;
+    color: #000000;
+  }
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}

@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>The Retro Cafeteria — POS Billing Software</title>
+  <link rel="icon" type="image/png" href="logo.png">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              black: "#171717",
+              red: "#C82026",
+              white: "#FFFFFF",
+              brown: "#6B4226",
+              "brown-subtle": "#EFE3D6",
+              caramel: "#C9A27E"
+            },
+            app: {
+              bg: "#F6F2EC",
+              surface: "#FFFFFF",
+              border: "#E5DDD3",
+              text: "#171717",
+              muted: "#5C534B"
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Application Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#F6F2EC] text-[#171717] h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- APP HEADER (Spec §5.4 & §7.2) -->
+  <header id="app-header" class="bg-white border-b border-[#E5DDD3] px-4 py-2.5 flex items-center justify-between shrink-0 z-30 shadow-sm">
+    <!-- Brand Wordmark / Logo -->
+    <div class="flex items-center gap-5 cursor-pointer" onclick="navigateTo('home')">
+      <div class="flex items-center gap-2">
+        <img src="logo.png" alt="Retro Cafeteria" class="h-9 object-contain" onerror="this.style.display='none'; document.getElementById('brand-text-logo').style.display='flex';">
+        <div id="brand-text-logo" class="flex-col leading-none" style="display:none;">
+          <span class="text-xl font-extrabold tracking-wider text-[#171717]">RETRO</span>
+          <span class="text-xs font-black tracking-widest text-[#C82026]">CAFETERIA</span>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EFE3D6] text-[#6B4226] text-xs font-semibold">
+        <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+        <span>GST: 33AABCR1234F1Z5</span>
+      </div>
+    </div>
+
+    <!-- Navigation Bar Pills -->
+    <nav class="hidden lg:flex items-center gap-1 bg-[#F6F2EC] p-1 rounded-xl border border-[#E5DDD3]">
+      <button onclick="navigateTo('home')" id="nav-home" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">home</span> Home
+      </button>
+      <button onclick="navigateTo('pos')" id="nav-pos" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">point_of_sale</span> Billing POS
+      </button>
+      <button onclick="navigateTo('tables')" id="nav-tables" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">table_restaurant</span> Tables <span id="header-occupied-badge" class="ml-0.5 px-1.5 py-0.2 bg-[#6B4226] text-white text-[10px] rounded-full hidden">0</span>
+      </button>
+      <button onclick="openHeldOrdersModal()" id="nav-held" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">pause_circle</span> Held (<span id="header-held-count">0</span>)
+      </button>
+      <button onclick="navigateTo('history')" id="nav-history" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">receipt_long</span> History
+      </button>
+      <button onclick="navigateTo('reports')" id="nav-reports" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">analytics</span> Reports
+      </button>
+      <button onclick="navigateTo('crm')" id="nav-crm" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">contacts</span> CRM / Guests
+      </button>
+      <button onclick="navigateTo('menu')" id="nav-menu" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">menu_book</span> Menu
+      </button>
+      <button onclick="navigateTo('settings')" id="nav-settings" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
+        <span class="material-symbols-outlined text-[17px]">settings</span> Settings
+      </button>
+    </nav>
+
+    <!-- Header Right Controls -->
+    <div class="flex items-center gap-3">
+      <!-- Critical Stock Alert Pill -->
+      <button onclick="openStockManagerModal()" class="flex items-center gap-1.5 text-xs text-[#5C534B] px-2.5 py-1 bg-[#F6F2EC] rounded-lg border border-[#E5DDD3] hover:bg-white cursor-pointer" title="Quick Critical Stock Manager">
+        <span class="material-symbols-outlined text-[16px] text-amber-700">inventory_2</span>
+        <span id="header-stock-alert" class="font-medium">Stock</span>
+      </button>
+
+      <!-- Printer Status Dot -->
+      <div id="printer-indicator" class="flex items-center gap-1.5 text-xs text-[#5C534B] px-2 py-1 bg-[#F6F2EC] rounded-lg border border-[#E5DDD3] cursor-pointer" onclick="testThermalPrint()" title="Click to test thermal receipt print">
+        <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+        <span id="printer-label" class="font-medium">80mm Ready</span>
+      </div>
+
+      <!-- Live Clock & Date -->
+      <div class="hidden sm:flex flex-col text-right leading-tight">
+        <span id="live-clock" class="text-xs font-bold font-mono text-[#171717]">--:--:--</span>
+        <span id="live-date" class="text-[11px] text-[#5C534B]">-- --- ----</span>
+      </div>
+
+      <!-- Active Staff Badge -->
+      <div class="flex items-center gap-2 pl-2 border-l border-[#E5DDD3]">
+        <div class="flex flex-col text-right">
+          <span id="active-user-name" class="text-xs font-bold text-[#171717]">Kiruba (Owner)</span>
+          <span id="active-user-role" class="text-[10px] uppercase font-bold text-[#6B4226]">Owner</span>
+        </div>
+        <button onclick="lockScreen()" class="p-1.5 rounded-lg hover:bg-[#F6F2EC] text-[#171717] border border-[#E5DDD3]" title="Lock Terminal (Esc / Auto 5m)">
+          <span class="material-symbols-outlined text-[20px]">lock</span>
+        </button>
+      </div>
+
+      <!-- Keyboard Shortcuts Help (?) -->
+      <button onclick="toggleShortcutsModal()" class="p-1.5 rounded-lg hover:bg-[#F6F2EC] text-[#5C534B] border border-[#E5DDD3]" title="Keyboard Shortcuts (?)">
+        <span class="material-symbols-outlined text-[20px]">keyboard</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT CONTAINER -->
+  <main id="main-viewport" class="flex-1 flex overflow-hidden relative">
+
+    <!-- VIEW 1: HOME LAUNCHER (Spec §7.2) -->
+    <section id="view-home" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-6 max-w-7xl mx-auto">
+      <!-- Welcome Hero -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-[#E5DDD3] shadow-sm">
+        <div>
+          <h1 class="text-2xl font-extrabold text-[#171717]">The Retro Cafeteria</h1>
+          <p class="text-sm text-[#5C534B] mt-0.5">High-speed billing terminal, tax invoices & thermal receipt print.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Local Database Active
+          </span>
+          <button onclick="exportLocalBackup()" class="btn-secondary !min-h-[38px] !py-1.5 !text-xs">
+            <span class="material-symbols-outlined text-[16px]">cloud_download</span> Backup Now
+          </button>
+        </div>
+      </div>
+
+      <!-- Big Order Launchers (Spec §7.2) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Counter Sale Tile -->
+        <div onclick="startNewOrder('counter')" class="bg-white p-6 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-sm hover:shadow-md flex flex-col justify-between group h-52">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-xl bg-[#171717] text-white flex items-center justify-center">
+                <span class="material-symbols-outlined text-[26px]">storefront</span>
+              </div>
+              <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2.5 py-1 rounded-md text-[#5C534B]">F1</span>
+            </div>
+            <h2 class="text-xl font-extrabold text-[#171717] mt-4">Counter Sale</h2>
+            <p class="text-xs text-[#5C534B] mt-1">Instant walk-in sale. Daily token resets to #1. 3-step rapid checkout.</p>
+          </div>
+          <div class="flex items-center justify-between pt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026]">
+            <span>Start Counter Order</span>
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </div>
+        </div>
+
+        <!-- Dine-in Tables Tile -->
+        <div onclick="navigateTo('tables')" class="bg-white p-6 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#6B4226] cursor-pointer transition-all shadow-sm hover:shadow-md flex flex-col justify-between group h-52">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-xl bg-[#6B4226] text-white flex items-center justify-center">
+                <span class="material-symbols-outlined text-[26px]">table_restaurant</span>
+              </div>
+              <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2.5 py-1 rounded-md text-[#5C534B]">F2</span>
+            </div>
+            <h2 class="text-xl font-extrabold text-[#171717] mt-4">Dine-in Tables</h2>
+            <p class="text-xs text-[#5C534B] mt-1">12 floor tables across Main Hall and AC Section. Multi-round ordering & KOT.</p>
+          </div>
+          <div class="flex items-center justify-between pt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#6B4226]">
+            <span id="home-tables-status">Select Table</span>
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </div>
+        </div>
+
+        <!-- Takeaway Tile -->
+        <div onclick="startNewOrder('takeaway')" class="bg-white p-6 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-sm hover:shadow-md flex flex-col justify-between group h-52">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-xl bg-[#171717] text-white flex items-center justify-center">
+                <span class="material-symbols-outlined text-[26px]">takeout_dining</span>
+              </div>
+              <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2.5 py-1 rounded-md text-[#5C534B]">F3</span>
+            </div>
+            <h2 class="text-xl font-extrabold text-[#171717] mt-4">Takeaway Parcel</h2>
+            <p class="text-xs text-[#5C534B] mt-1">Parcel order with customer name, phone and hold-for-pickup option.</p>
+          </div>
+          <div class="flex items-center justify-between pt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026]">
+            <span>New Takeaway</span>
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Financial & Shift Dashboard -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <!-- Sales Card -->
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[#5C534B]">
+            <span class="text-xs font-semibold uppercase tracking-wider">Today's Sales</span>
+            <span class="material-symbols-outlined text-[20px] text-emerald-600">payments</span>
+          </div>
+          <div class="mt-3">
+            <span class="text-3xl font-extrabold font-mono text-[#171717]" id="home-gross-sales">₹0.00</span>
+            <p class="text-xs text-[#5C534B] mt-1"><span id="home-bill-count">0</span> bills settled today</p>
+          </div>
+        </div>
+
+        <!-- Cash in Drawer -->
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[#5C534B]">
+            <span class="text-xs font-semibold uppercase tracking-wider">Cash Tendered</span>
+            <span class="material-symbols-outlined text-[20px] text-amber-700">attach_money</span>
+          </div>
+          <div class="mt-3">
+            <span class="text-2xl font-bold font-mono text-[#171717]" id="home-cash-sales">₹0.00</span>
+            <p class="text-xs text-[#5C534B] mt-1"><span id="home-cash-count">0</span> cash bills</p>
+          </div>
+        </div>
+
+        <!-- UPI & Digital Payments -->
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[#5C534B]">
+            <span class="text-xs font-semibold uppercase tracking-wider">UPI & Card</span>
+            <span class="material-symbols-outlined text-[20px] text-blue-600">qr_code_scanner</span>
+          </div>
+          <div class="mt-3">
+            <span class="text-2xl font-bold font-mono text-[#171717]" id="home-digital-sales">₹0.00</span>
+            <p class="text-xs text-[#5C534B] mt-1"><span id="home-digital-count">0</span> digital payments</p>
+          </div>
+        </div>
+
+        <!-- GST Collected -->
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[#5C534B]">
+            <span class="text-xs font-semibold uppercase tracking-wider">5% GST Collected</span>
+            <span class="material-symbols-outlined text-[20px] text-purple-600">account_balance</span>
+          </div>
+          <div class="mt-3">
+            <span class="text-2xl font-bold font-mono text-[#171717]" id="home-gst-total">₹0.00</span>
+            <p class="text-xs text-[#5C534B] mt-1">CGST ₹<span id="home-cgst">0.00</span> + SGST ₹<span id="home-sgst">0.00</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex flex-wrap gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+        <div class="flex flex-wrap gap-2">
+          <button onclick="navigateTo('pos')" class="btn-primary !min-h-[42px] !py-2 !text-xs">
+            <span class="material-symbols-outlined text-[18px]">add_shopping_cart</span> Open Register
+          </button>
+          <button onclick="navigateTo('reports')" class="btn-secondary !min-h-[42px] !py-2 !text-xs">
+            <span class="material-symbols-outlined text-[18px]">receipt</span> View Daily Z-Report
+          </button>
+          <button onclick="testThermalPrint()" class="btn-secondary !min-h-[42px] !py-2 !text-xs">
+            <span class="material-symbols-outlined text-[18px]">print</span> Test Thermal Printer
+          </button>
+        </div>
+        <div class="text-xs text-[#5C534B]">
+          Press <kbd class="px-1.5 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">?</kbd> for keyboard shortcuts
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: BILLING POS ORDER ENTRY (The Core Billing Screen, Spec §7.5) -->
+    <section id="view-pos" class="view-panel w-full h-full flex flex-row overflow-hidden hidden">
+
+      <!-- LEFT COLUMN: Categories Rail (~160px) -->
+      <aside class="w-44 bg-white border-r border-[#E5DDD3] flex flex-col shrink-0 select-none">
+        <div class="p-3 border-b border-[#E5DDD3] flex items-center justify-between">
+          <span class="text-xs font-bold text-[#171717] uppercase tracking-wider">Categories</span>
+          <button onclick="navigateTo('menu')" class="text-xs text-[#C82026] hover:underline flex items-center" title="Edit Categories">
+            <span class="material-symbols-outlined text-[16px]">edit</span>
+          </button>
+        </div>
+        <div id="pos-categories-list" class="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
+          <!-- Populated dynamically by app.js -->
+        </div>
+      </aside>
+
+      <!-- CENTER COLUMN: Search & Item Grid (Flexible) -->
+      <section class="flex-1 flex flex-col bg-[#F6F2EC] overflow-hidden min-w-0">
+        <!-- Top Toolbar: Search & Order Mode Selector -->
+        <div class="bg-white border-b border-[#E5DDD3] p-3 flex flex-wrap items-center justify-between gap-3">
+          <!-- Instant Search / Short-Code Input -->
+          <div class="flex-1 max-w-md relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5C534B]">
+              <span class="material-symbols-outlined text-[20px]">search</span>
+            </div>
+            <input type="text" id="pos-search-input" placeholder="Search dish or type code + Enter (e.g. CB)..." 
+              class="w-full pl-9 pr-14 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-sm font-medium focus:bg-white focus:border-[#C82026] focus:outline-none transition-all">
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[11px] text-[#5C534B] font-mono">
+              [ / ]
+            </span>
+          </div>
+
+          <!-- Active Order Mode Pill & Table Indicator -->
+          <div class="flex items-center gap-2">
+            <div class="flex bg-[#F6F2EC] p-1 rounded-xl border border-[#E5DDD3]">
+              <button onclick="setPosOrderType('counter')" id="btn-mode-counter" class="px-3 py-1 rounded-lg text-xs font-bold transition-all bg-[#171717] text-white">
+                Counter
+              </button>
+              <button onclick="setPosOrderType('takeaway')" id="btn-mode-takeaway" class="px-3 py-1 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717]">
+                Takeaway
+              </button>
+              <button onclick="setPosOrderType('dinein')" id="btn-mode-dinein" class="px-3 py-1 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717]">
+                Dine-in
+              </button>
+            </div>
+
+            <!-- Table Picker Selector (Visible in Dine-in mode) -->
+            <div id="pos-table-selector-wrap" class="hidden">
+              <select id="pos-table-select" onchange="onPosTableSelected(this.value)" class="py-1.5 px-3 bg-white border border-[#E5DDD3] rounded-xl text-xs font-bold text-[#6B4226] focus:outline-none">
+                <option value="">Select Table...</option>
+              </select>
+            </div>
+
+            <!-- Customer Details Button -->
+            <button onclick="openCustomerInfoModal()" class="px-2.5 py-1.5 rounded-xl border border-[#E5DDD3] bg-white text-xs font-semibold text-[#5C534B] hover:text-[#171717] flex items-center gap-1" title="Customer Details">
+              <span class="material-symbols-outlined text-[16px]">person</span>
+              <span id="pos-customer-badge">Customer</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Item Cards Grid -->
+        <div id="pos-items-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3.5 content-start">
+          <!-- Populated dynamically by app.js -->
+        </div>
+
+        <!-- Center Empty State Helper (shown when no items match or catalog is empty) -->
+        <div id="pos-empty-catalog-msg" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-[#EFE3D6] text-[#6B4226] flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-[32px]">restaurant_menu</span>
+          </div>
+          <h3 class="text-base font-bold text-[#171717]">No Products in Menu</h3>
+          <p class="text-xs text-[#5C534B] max-w-sm mt-1">Start by adding your menu dishes, or populate the official Retro Cafeteria sample items with one click.</p>
+          <div class="mt-4 flex gap-2">
+            <button onclick="loadSampleCatalogData()" class="btn-primary !min-h-[38px] !py-1.5 !text-xs">
+              <span class="material-symbols-outlined text-[16px]">download</span> Load Retro Cafeteria Menu
+            </button>
+            <button onclick="openAddProductModal()" class="btn-secondary !min-h-[38px] !py-1.5 !text-xs">
+              <span class="material-symbols-outlined text-[16px]">add</span> Add Product
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Live Check / Cart (~380px) -->
+      <aside class="w-96 bg-white border-l border-[#E5DDD3] flex flex-col shrink-0 select-none shadow-lg z-20">
+        <!-- Order Header -->
+        <div class="p-3.5 border-b border-[#E5DDD3] flex items-center justify-between bg-[#FCFAF8]">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="cart-order-type" class="text-sm font-extrabold text-[#171717] uppercase">Counter Sale</span>
+              <span id="cart-table-or-token" class="px-2 py-0.5 bg-[#EFE3D6] text-[#6B4226] text-xs font-bold rounded-md">Token #1</span>
+            </div>
+            <p id="cart-order-subtext" class="text-[11px] text-[#5C534B] mt-0.5">New Order • <span id="cart-items-count">0 items</span></p>
+          </div>
+          <button onclick="clearCurrentCart()" class="text-xs text-stone-500 hover:text-red-700 flex items-center gap-0.5 px-2 py-1 rounded hover:bg-red-50" title="Clear Check">
+            <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Clear
+          </button>
+        </div>
+
+        <!-- Cart Line Items Container -->
+        <div id="cart-items-list" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+          <!-- Populated dynamically by app.js -->
+        </div>
+
+        <!-- Totals & Tax Calculation Breakdown (Always visible, Spec §7.5) -->
+        <div class="border-t border-[#E5DDD3] p-4 bg-[#FCFAF8] flex flex-col gap-1.5 text-xs">
+          <div class="flex justify-between text-[#5C534B]">
+            <span>Subtotal</span>
+            <span class="font-mono font-semibold text-[#171717]" id="cart-subtotal">₹0.00</span>
+          </div>
+          
+          <div id="cart-discount-row" class="flex justify-between text-emerald-700 cursor-pointer hover:underline" onclick="openDiscountModal()">
+            <span class="flex items-center gap-1">
+              <span>Discount</span>
+              <span id="cart-discount-label" class="text-[10px] bg-emerald-100 text-emerald-800 px-1 rounded">0%</span>
+            </span>
+            <span class="font-mono font-semibold" id="cart-discount-amt">-₹0.00</span>
+          </div>
+
+          <div class="flex justify-between text-[#5C534B]">
+            <span>Taxable Value (SAC 9963)</span>
+            <span class="font-mono text-[#171717]" id="cart-taxable-amt">₹0.00</span>
+          </div>
+
+          <div class="flex justify-between text-[#5C534B]">
+            <span>CGST (2.5%)</span>
+            <span class="font-mono text-[#171717]" id="cart-cgst-amt">₹0.00</span>
+          </div>
+
+          <div class="flex justify-between text-[#5C534B]">
+            <span>SGST (2.5%)</span>
+            <span class="font-mono text-[#171717]" id="cart-sgst-amt">₹0.00</span>
+          </div>
+
+          <div id="cart-roundoff-row" class="flex justify-between text-[#5C534B]">
+            <span>Round off</span>
+            <span class="font-mono text-[#171717]" id="cart-roundoff-amt">₹0.00</span>
+          </div>
+
+          <div class="border-t border-[#E5DDD3] pt-2 mt-1 flex justify-between items-baseline">
+            <span class="text-sm font-extrabold text-[#171717]">TOTAL</span>
+            <span class="text-2xl font-extrabold font-mono text-[#171717]" id="cart-grand-total">₹0.00</span>
+          </div>
+        </div>
+
+        <!-- Checkout Actions (Spec §7.5) -->
+        <div class="p-3 border-t border-[#E5DDD3] bg-white flex flex-col gap-2">
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="holdCurrentOrder()" class="btn-secondary !min-h-[42px] !py-2 !text-xs" title="Hold Order (F9)">
+              <span class="material-symbols-outlined text-[17px]">pause</span> Hold (F9)
+            </button>
+            <button onclick="printKitchenSlip()" class="btn-secondary !min-h-[42px] !py-2 !text-xs" title="Print Kitchen Slip (F6)">
+              <span class="material-symbols-outlined text-[17px]">soup_kitchen</span> Kitchen (F6)
+            </button>
+          </div>
+
+          <button onclick="openPaymentDrawer()" id="btn-pay-bill" class="btn-primary w-full !text-base shadow-md" title="Pay & Print Bill (F12 or Ctrl+Enter)">
+            <span class="material-symbols-outlined text-[20px]">print</span>
+            <span>Pay & Print Bill (F12)</span>
+          </button>
+        </div>
+      </aside>
+    </section>
+
+    <!-- VIEW 3: DINE-IN TABLES GRID (Spec §7.4) -->
+    <section id="view-tables" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-5 max-w-7xl mx-auto hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+        <div>
+          <h1 class="text-xl font-extrabold text-[#171717]">Dine-In Floor Plan</h1>
+          <p class="text-xs text-[#5C534B]">Tap a free table to start an order, an occupied table to add items or bill.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- Section filter pills -->
+          <div id="table-section-filters" class="flex bg-[#F6F2EC] p-1 rounded-xl border border-[#E5DDD3]">
+            <button onclick="filterTableSection('all')" class="px-3 py-1 rounded-lg text-xs font-bold bg-[#171717] text-white">All</button>
+            <button onclick="filterTableSection('Main Hall')" class="px-3 py-1 rounded-lg text-xs font-bold text-[#5C534B]">Main Hall</button>
+            <button onclick="filterTableSection('AC Section')" class="px-3 py-1 rounded-lg text-xs font-bold text-[#5C534B]">AC Section</button>
+          </div>
+          <button onclick="openAddTableModal()" class="btn-secondary !min-h-[36px] !py-1 !text-xs" title="Add / Edit Tables">
+            <span class="material-symbols-outlined text-[16px]">add</span> Add Table
+          </button>
+        </div>
+      </div>
+
+      <!-- Tables Grid Container -->
+      <div id="tables-floor-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- Populated dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- VIEW 4: BILL HISTORY & AUDIT TRAIL (Spec §7.9) -->
+    <section id="view-history" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-4 max-w-7xl mx-auto hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+        <div>
+          <h1 class="text-xl font-extrabold text-[#171717]">Bill History & Invoices</h1>
+          <p class="text-xs text-[#5C534B]">Consecutive tax invoices. Reprints marked DUPLICATE. Cancellations audited.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="text" id="history-search-input" oninput="filterBillHistory()" placeholder="Search Bill #, Phone, Date..." 
+            class="px-3 py-1.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none w-56">
+          <select id="history-status-filter" onchange="filterBillHistory()" class="px-3 py-1.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:outline-none">
+            <option value="all">All Invoices</option>
+            <option value="active">Active Only</option>
+            <option value="cancelled">Cancelled Only</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Invoices Table Container -->
+      <div class="bg-white rounded-2xl border border-[#E5DDD3] overflow-hidden shadow-sm">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-[#F6F2EC] border-b border-[#E5DDD3] text-[#5C534B] font-bold">
+              <th class="p-3">Bill Number</th>
+              <th class="p-3">Date & Time</th>
+              <th class="p-3">Type / Location</th>
+              <th class="p-3">Cashier</th>
+              <th class="p-3">Mode</th>
+              <th class="p-3 text-right">Taxable</th>
+              <th class="p-3 text-right">GST (5%)</th>
+              <th class="p-3 text-right">Grand Total</th>
+              <th class="p-3 text-center">Status</th>
+              <th class="p-3 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body" class="divide-y divide-[#E5DDD3]">
+            <!-- Populated dynamically by app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 5: OWNER REPORTS & Z-REPORT (Spec §7.10) -->
+    <section id="view-reports" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-5 max-w-7xl mx-auto hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+        <div>
+          <h1 class="text-xl font-extrabold text-[#171717]">Financial Reports & Z-Report</h1>
+          <p class="text-xs text-[#5C534B]">Daily sales summary, tender reconciliation, and statutory GST export.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="shareWhatsAppSummary()" class="btn-secondary !min-h-[36px] !py-1 !text-xs !bg-emerald-600 !text-white !border-emerald-600 hover:!bg-emerald-700 shadow-sm" title="Send Daily Sales Report to Owner's WhatsApp">
+            <span class="material-symbols-outlined text-[16px]">chat</span> WhatsApp Report
+          </button>
+          <button onclick="printDailyZReport()" class="btn-primary !min-h-[36px] !py-1 !text-xs">
+            <span class="material-symbols-outlined text-[16px]">print</span> Print Z-Report
+          </button>
+          <button onclick="exportReportsCSV()" class="btn-secondary !min-h-[36px] !py-1 !text-xs">
+            <span class="material-symbols-outlined text-[16px]">csv</span> Export CSV
+          </button>
+          <button onclick="exportGSTR1B2CSCSV()" class="btn-secondary !min-h-[36px] !py-1 !text-xs !bg-blue-600 !text-white !border-blue-600 hover:!bg-blue-700 shadow-sm" title="Download GSTR-1 Table 7 B2CS CSV for GST Portal">
+            <span class="material-symbols-outlined text-[16px]">file_download</span> GSTR-1 B2CS
+          </button>
+          <button onclick="exportAuditorSalesRegisterCSV()" class="btn-secondary !min-h-[36px] !py-1 !text-xs" title="Download Full Sales Register CSV for CA">
+            <span class="material-symbols-outlined text-[16px]">table_view</span> CA Register
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary KPI Row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <span class="text-[11px] font-bold text-[#5C534B] uppercase">Net Sales Revenue</span>
+          <div class="text-2xl font-extrabold font-mono text-[#171717] mt-1" id="report-kpi-sales">₹0.00</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <span class="text-[11px] font-bold text-[#5C534B] uppercase">Bills Settled</span>
+          <div class="text-2xl font-extrabold font-mono text-[#171717] mt-1" id="report-kpi-bills">0</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <span class="text-[11px] font-bold text-[#5C534B] uppercase">CGST (2.5%)</span>
+          <div class="text-2xl font-extrabold font-mono text-[#171717] mt-1" id="report-kpi-cgst">₹0.00</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <span class="text-[11px] font-bold text-[#5C534B] uppercase">SGST (2.5%)</span>
+          <div class="text-2xl font-extrabold font-mono text-[#171717] mt-1" id="report-kpi-sgst">₹0.00</div>
+        </div>
+      </div>
+
+      <!-- Payment Breakdown & Item Wise Sales -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <!-- Payment Mode Card -->
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col gap-3">
+          <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider">Payment Tenders</h3>
+          <div class="flex flex-col gap-2 divide-y divide-[#F6F2EC] text-xs">
+            <div class="flex justify-between py-2">
+              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-amber-500"></span> Cash</span>
+              <span class="font-mono font-bold" id="report-tender-cash">₹0.00</span>
+            </div>
+            <div class="flex justify-between py-2">
+              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-blue-500"></span> UPI</span>
+              <span class="font-mono font-bold" id="report-tender-upi">₹0.00</span>
+            </div>
+            <div class="flex justify-between py-2">
+              <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-purple-500"></span> Card</span>
+              <span class="font-mono font-bold" id="report-tender-card">₹0.00</span>
+            </div>
+          </div>
+          <div class="mt-3 p-3 bg-[#FCFAF8] rounded-xl border border-[#E5DDD3] text-xs">
+            <span class="text-[#5C534B]">Expected Cash in Drawer:</span>
+            <div class="text-xl font-bold font-mono text-[#171717] mt-1" id="report-drawer-cash">₹0.00</div>
+          </div>
+        </div>
+
+        <!-- Item-Wise Sales Table -->
+        <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col gap-3">
+          <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider">Item-Wise Sales</h3>
+          <div class="max-h-72 overflow-y-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-[#F6F2EC] text-[#5C534B] font-bold">
+                <tr>
+                  <th class="p-2">Item Name</th>
+                  <th class="p-2">Category</th>
+                  <th class="p-2 text-right">Qty</th>
+                  <th class="p-2 text-right">Revenue</th>
+                </tr>
+              </thead>
+              <tbody id="report-items-table-body" class="divide-y divide-[#F6F2EC]">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Menu Engineering: Fast Movers (Best Sellers) vs Slow Movers (Low Performers) (Feature 8) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Top 5 Star Performers -->
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col gap-3">
+          <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-2.5">
+            <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-amber-500 text-[18px]">star</span> Top 5 Best Sellers
+            </h3>
+            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Star Performers</span>
+          </div>
+          <div id="report-top-sellers" class="flex flex-col gap-2 divide-y divide-[#F6F2EC] text-xs">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Bottom 5 Slow Movers -->
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col gap-3">
+          <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-2.5">
+            <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-amber-600 text-[18px]">trending_down</span> Slow Movers
+            </h3>
+            <span class="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Needs Promotion / Review</span>
+          </div>
+          <div id="report-slow-movers" class="flex flex-col gap-2 divide-y divide-[#F6F2EC] text-xs">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5B: CUSTOMER DIRECTORY & CRM -->
+    <section id="view-crm" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-5 max-w-7xl mx-auto hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+        <div>
+          <h1 class="text-xl font-extrabold text-[#171717]">Guest Directory & CRM</h1>
+          <p class="text-xs text-[#5C534B]">Track customer visits, lifetime spend, favorite dishes, and 1-click WhatsApp re-engagement.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="exportCRMCSV()" class="btn-secondary !min-h-[36px] !py-1 !text-xs">
+            <span class="material-symbols-outlined text-[16px]">download</span> Export Guests CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- CRM KPI Row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <span class="text-[11px] font-bold text-[#5C534B] uppercase">Registered Guests</span>
+          <div class="text-2xl font-extrabold font-mono text-[#171717] mt-1" id="crm-kpi-guests">0</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <span class="text-[11px] font-bold text-[#5C534B] uppercase">Repeat Customer Rate</span>
+          <div class="text-2xl font-extrabold font-mono text-emerald-700 mt-1" id="crm-kpi-repeat">0%</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <span class="text-[11px] font-bold text-[#5C534B] uppercase">Total Guest Revenue</span>
+          <div class="text-2xl font-extrabold font-mono text-[#171717] mt-1" id="crm-kpi-revenue">₹0.00</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <span class="text-[11px] font-bold text-[#5C534B] uppercase">Avg Customer Spend</span>
+          <div class="text-2xl font-extrabold font-mono text-[#171717] mt-1" id="crm-kpi-avg">₹0.00</div>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="bg-white p-4 rounded-2xl border border-[#E5DDD3] flex flex-wrap items-center justify-between gap-3">
+        <div class="flex-1 max-w-md relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5C534B]">
+            <span class="material-symbols-outlined text-[20px]">search</span>
+          </div>
+          <input type="text" id="crm-search-input" oninput="renderCRMDirectory()" placeholder="Search guest name or 10-digit mobile number..."
+            class="w-full pl-9 pr-4 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none">
+        </div>
+        <div class="flex items-center gap-1.5 bg-[#F6F2EC] p-1 rounded-xl border border-[#E5DDD3]">
+          <button onclick="setCRMFilter('all')" id="crm-filter-all" class="px-3 py-1 rounded-lg text-xs font-bold bg-[#171717] text-white">All Guests</button>
+          <button onclick="setCRMFilter('regulars')" id="crm-filter-regulars" class="px-3 py-1 rounded-lg text-xs font-bold text-[#5C534B] hover:text-[#171717]">Regulars (2+ Visits)</button>
+          <button onclick="setCRMFilter('vips')" id="crm-filter-vips" class="px-3 py-1 rounded-lg text-xs font-bold text-[#5C534B] hover:text-[#171717]">VIPs (₹1000+)</button>
+        </div>
+      </div>
+
+      <!-- CRM Table -->
+      <div class="bg-white rounded-2xl border border-[#E5DDD3] shadow-sm overflow-hidden flex flex-col">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-[#E5DDD3] bg-[#FCFAF8] text-[#5C534B] font-bold uppercase tracking-wider text-[11px]">
+                <th class="p-3 pl-4">Guest Details</th>
+                <th class="p-3 text-center">Visits</th>
+                <th class="p-3 text-right">Lifetime Spend</th>
+                <th class="p-3 text-right">Avg Order</th>
+                <th class="p-3">Favorite Dish</th>
+                <th class="p-3">Last Visit</th>
+                <th class="p-3 pr-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="crm-table-body" class="divide-y divide-[#F6F2EC]">
+              <!-- Populated dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+        <div id="crm-empty-state" class="hidden p-8 text-center text-[#5C534B] text-xs">
+          No customer records found. Add guest mobile numbers at counter to build your CRM directory automatically.
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 6: MENU & PRODUCT MANAGEMENT (Spec §7.11) -->
+    <section id="view-menu" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-5 max-w-7xl mx-auto hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#E5DDD3]">
+        <div>
+          <h1 class="text-xl font-extrabold text-[#171717]">Menu & Products</h1>
+          <p class="text-xs text-[#5C534B]">Manage dishes, prices, short-codes, categories, and 1-click availability.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openAddProductModal()" class="btn-primary !min-h-[36px] !py-1 !text-xs">
+            <span class="material-symbols-outlined text-[16px]">add</span> Add Product
+          </button>
+          <button onclick="openBulkPriceModal()" class="btn-secondary !min-h-[36px] !py-1 !text-xs">
+            <span class="material-symbols-outlined text-[16px]">percent</span> Bulk Price
+          </button>
+          <button onclick="loadSampleCatalogData()" class="btn-secondary !min-h-[36px] !py-1 !text-xs" title="Load Default Retro Cafeteria Menu">
+            <span class="material-symbols-outlined text-[16px]">download</span> Sample Menu
+          </button>
+        </div>
+      </div>
+
+      <!-- Products Table -->
+      <div class="bg-white rounded-2xl border border-[#E5DDD3] overflow-hidden shadow-sm">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-[#F6F2EC] border-b border-[#E5DDD3] text-[#5C534B] font-bold">
+              <th class="p-3">Dish Name</th>
+              <th class="p-3">Code</th>
+              <th class="p-3">Category</th>
+              <th class="p-3 text-right">Price</th>
+              <th class="p-3 text-center">GST Rate</th>
+              <th class="p-3 text-center">Type</th>
+              <th class="p-3 text-center">Available</th>
+              <th class="p-3 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="menu-products-table-body" class="divide-y divide-[#E5DDD3]">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 7: SETTINGS & CONFIGURATION (Spec §7.12) -->
+    <section id="view-settings" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-6 max-w-5xl mx-auto hidden">
+      <div class="bg-white p-6 rounded-2xl border border-[#E5DDD3]">
+        <h1 class="text-2xl font-extrabold text-[#171717]">Store Settings & Rules</h1>
+        <p class="text-xs text-[#5C534B] mt-1">Configure restaurant tax details, thermal printer width, user PINs, and local backups.</p>
+
+        <form id="settings-form" onsubmit="saveSettings(event)" class="mt-6 flex flex-col gap-6">
+          <!-- Restaurant Identity -->
+          <div>
+            <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider mb-3">Restaurant Identity</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Restaurant Name</label>
+                <input type="text" id="set-name" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Tagline</label>
+                <input type="text" id="set-tagline" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Address Line 1</label>
+                <input type="text" id="set-address1" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Address Line 2 (City, State, PIN)</label>
+                <input type="text" id="set-address2" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Phone Number</label>
+                <input type="text" id="set-phone" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">GSTIN Number (15 digits)</label>
+                <input type="text" id="set-gstin" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">FSSAI Licence Number (14 digits)</label>
+                <input type="text" id="set-fssai" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Owner WhatsApp Mobile Number</label>
+                <input type="text" id="set-ownerwhatsapp" placeholder="e.g. 9876543210 (for daily reports & NC alerts)" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Merchant UPI ID (VPA) for Dynamic QR</label>
+                <input type="text" id="set-upiid" placeholder="e.g. retrocafe@oksbi or retrocafe@upi" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none font-mono">
+                <span class="text-[10px] text-[#5C534B] mt-0.5 block">Zero machine cost • Direct bank settlement • 0% MDR</span>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Print UPI Details on Bill</label>
+                <select id="set-printupiqr" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:outline-none">
+                  <option value="true">ON (Include UPI payment info on customer receipt)</option>
+                  <option value="false">OFF (Display on screen only)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tax & Billing Settings -->
+          <div class="border-t border-[#E5DDD3] pt-5">
+            <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider mb-3">Tax & Billing Configuration</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Default GST Rate (%)</label>
+                <input type="number" step="0.1" id="set-gstrate" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Tax Mode</label>
+                <select id="set-taxmode" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:outline-none">
+                  <option value="exclusive">Exclusive (GST added on top)</option>
+                  <option value="inclusive">Inclusive (GST included in price)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Invoice Scheme</label>
+                <select id="set-invoicetype" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:outline-none">
+                  <option value="tax_invoice">Tax Invoice (Standard GST)</option>
+                  <option value="bill_of_supply">Bill of Supply (Composition Scheme)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Printer & Hardware Settings -->
+          <div class="border-t border-[#E5DDD3] pt-5">
+            <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider mb-3">Receipt Printer & Hardware</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Thermal Paper Roll Width</label>
+                <select id="set-printerwidth" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:outline-none">
+                  <option value="80mm">80 mm Thermal (48 characters/line - Recommended)</option>
+                  <option value="58mm">58 mm Thermal (32 characters/line)</option>
+                </select>
+              </div>
+              <div class="flex items-end">
+                <button type="button" onclick="testThermalPrint()" class="btn-secondary w-full !text-xs">
+                  <span class="material-symbols-outlined text-[16px]">print</span> Print Test Receipt
+                </button>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Kitchen Slip (KOT) Auto-Print</label>
+                <select id="set-autoprintkot" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:outline-none">
+                  <option value="true">ON (Auto-print kitchen slip when order is placed)</option>
+                  <option value="false">OFF (Manual print via F6 only)</option>
+                </select>
+                <span class="text-[11px] text-[#5C534B] mt-0.5 block">When ON, sends new items to kitchen printer on order save/settle.</span>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Cash Drawer Auto-Kick</label>
+                <select id="set-autokickdrawer" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:outline-none">
+                  <option value="true">ON (Pops cash drawer on Cash payment)</option>
+                  <option value="false">OFF (Disabled)</option>
+                </select>
+                <span class="text-[11px] text-[#5C534B] mt-0.5 block">Sends ESC/POS pulse to RJ11 cash drawer port on Cash sale.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Security & Roles -->
+          <div class="border-t border-[#E5DDD3] pt-5">
+            <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider mb-3">Security & 4-Digit PINs</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Cashier PIN (Default 0000)</label>
+                <input type="password" maxlength="4" id="set-cashierpin" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-mono font-medium focus:bg-white focus:outline-none text-center">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Owner PIN (Default 1234)</label>
+                <input type="password" maxlength="4" id="set-ownerpin" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-mono font-medium focus:bg-white focus:outline-none text-center">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Cashier Max Discount Limit (%)</label>
+                <input type="number" id="set-discountlimit" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-mono font-medium focus:bg-white focus:outline-none text-center">
+              </div>
+            </div>
+          </div>
+
+          <!-- Automated Local & Cloud-Drive Backup Settings (Spec §10) -->
+          <div class="border-t border-[#E5DDD3] pt-5">
+            <h3 class="text-sm font-bold text-[#171717] uppercase tracking-wider mb-3">Automated Local & Cloud Backup</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Backup Destination Folder Path</label>
+                <input type="text" id="set-backupfolder" placeholder="e.g. D:\posdemo\openbill\backups or G:\My Drive\POS_Backups" 
+                  class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-mono font-medium focus:bg-white focus:outline-none">
+                <span class="text-[11px] text-[#5C534B] mt-0.5 block">Target directory on your PC, external USB, or Google Drive / OneDrive sync folder.</span>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#5C534B] mb-1">Automatic Background Backup</label>
+                <select id="set-autobackup" class="w-full px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:outline-none">
+                  <option value="true">ON (Auto-save snapshot on bill settlement & day close)</option>
+                  <option value="false">OFF (Manual backup only)</option>
+                </select>
+                <span class="text-[11px] text-[#5C534B] mt-0.5 block">Maintains rolling 30 timestamped backups automatically in the destination folder.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 flex gap-3">
+            <button type="submit" class="btn-primary">
+              <span class="material-symbols-outlined text-[18px]">save</span> Save Settings
+            </button>
+          </div>
+        </form>
+
+        <!-- Database Backup / Reset Actions -->
+        <div class="border-t border-[#E5DDD3] pt-6 mt-6 flex flex-wrap gap-3 items-center justify-between">
+          <div class="flex gap-2">
+            <button onclick="exportLocalBackup()" class="btn-secondary !text-xs">
+              <span class="material-symbols-outlined text-[16px]">download</span> Export Database Backup
+            </button>
+            <label class="btn-secondary !text-xs cursor-pointer">
+              <span class="material-symbols-outlined text-[16px]">upload</span> Restore from Backup
+              <input type="file" accept=".json" onchange="importLocalBackup(event)" class="hidden">
+            </label>
+          </div>
+          <button onclick="confirmResetDemoData()" class="btn-danger-outline !text-xs">
+            <span class="material-symbols-outlined text-[16px]">restart_alt</span> Reset to Clean State
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOCK SCREEN OVERLAY (Spec §7.1) -->
+    <div id="lock-screen-overlay" class="fixed inset-0 bg-[#171717] z-50 flex flex-col items-center justify-center p-6 hidden">
+      <div class="flex flex-col items-center max-w-sm w-full">
+        <!-- Reversed Brand Wordmark on Black -->
+        <div class="flex items-center gap-2 mb-6">
+          <img src="logo.png" alt="Retro Cafeteria" class="h-12 object-contain invert brightness-200" onerror="this.style.display='none'; document.getElementById('lock-brand-text').style.display='flex';">
+          <div id="lock-brand-text" class="flex-col items-center leading-none" style="display:none;">
+            <span class="text-3xl font-extrabold tracking-wider text-white">RETRO</span>
+            <span class="text-sm font-black tracking-widest text-[#C82026]">CAFETERIA</span>
+          </div>
+        </div>
+
+        <p class="text-sm text-stone-400 mb-5">Enter 4-digit staff PIN to unlock</p>
+
+        <!-- PIN Display Dots -->
+        <div id="lock-pin-dots" class="flex gap-3 mb-6">
+          <span class="w-4 h-4 rounded-full border-2 border-stone-600 bg-transparent transition-all"></span>
+          <span class="w-4 h-4 rounded-full border-2 border-stone-600 bg-transparent transition-all"></span>
+          <span class="w-4 h-4 rounded-full border-2 border-stone-600 bg-transparent transition-all"></span>
+          <span class="w-4 h-4 rounded-full border-2 border-stone-600 bg-transparent transition-all"></span>
+        </div>
+
+        <div id="lock-error-msg" class="text-xs font-bold text-red-500 mb-4 h-4"></div>
+
+        <!-- 3x4 On-Screen Keypad -->
+        <div class="grid grid-cols-3 gap-3 w-full max-w-[280px]">
+          <button onclick="pressPinKey('1')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">1</button>
+          <button onclick="pressPinKey('2')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">2</button>
+          <button onclick="pressPinKey('3')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">3</button>
+          <button onclick="pressPinKey('4')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">4</button>
+          <button onclick="pressPinKey('5')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">5</button>
+          <button onclick="pressPinKey('6')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">6</button>
+          <button onclick="pressPinKey('7')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">7</button>
+          <button onclick="pressPinKey('8')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">8</button>
+          <button onclick="pressPinKey('9')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">9</button>
+          <button onclick="clearPin()" class="h-16 rounded-2xl bg-stone-900 text-stone-400 text-sm font-bold hover:bg-stone-800 active:scale-95 transition-all">CLEAR</button>
+          <button onclick="pressPinKey('0')" class="h-16 rounded-2xl bg-stone-800 text-white text-2xl font-bold font-mono hover:bg-stone-700 active:scale-95 transition-all">0</button>
+          <button onclick="backspacePin()" class="h-16 rounded-2xl bg-stone-900 text-stone-400 flex items-center justify-center hover:bg-stone-800 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-[24px]">backspace</span>
+          </button>
+        </div>
+
+        <div class="mt-6 text-xs text-stone-500 text-center">
+          Default Owner: <span class="font-mono text-stone-300">1234</span> • Cashier: <span class="font-mono text-stone-300">0000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 1: PAY & PRINT DRAWER (Spec §7.7) -->
+    <div id="payment-modal" class="fixed inset-0 bg-black/60 z-40 flex justify-end hidden">
+      <div class="w-full max-w-lg bg-white h-full flex flex-col shadow-2xl overflow-y-auto animate-slide-left">
+        <!-- Drawer Header -->
+        <div class="p-5 border-b border-[#E5DDD3] flex items-center justify-between bg-[#FCFAF8]">
+          <div>
+            <h2 class="text-xl font-extrabold text-[#171717]">Settle & Print Bill</h2>
+            <p class="text-xs text-[#5C534B]">Assign consecutive bill number, print invoice & log tender.</p>
+          </div>
+          <button onclick="closePaymentDrawer()" class="p-2 rounded-lg hover:bg-[#F6F2EC] text-[#5C534B]">
+            <span class="material-symbols-outlined text-[22px]">close</span>
+          </button>
+        </div>
+
+        <!-- Grand Total Banner -->
+        <div class="p-6 bg-[#171717] text-white flex flex-col items-center justify-center">
+          <span class="text-xs uppercase font-bold tracking-widest text-[#EFE3D6]">Total Amount Due</span>
+          <div class="text-4xl font-extrabold font-mono text-white mt-1" id="pay-grand-total">₹0.00</div>
+          <span class="text-xs text-stone-400 mt-1" id="pay-mode-info">Tax Invoice (5% GST Included)</span>
+        </div>
+
+        <div class="p-6 flex-1 flex flex-col gap-5">
+          <!-- Payment Mode Radio Chips -->
+          <div>
+            <label class="block text-xs font-bold text-[#171717] uppercase tracking-wider mb-2">Payment Method</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" onclick="selectPaymentMode('CASH')" id="pay-btn-cash" class="pay-mode-btn p-3 rounded-xl border-2 border-[#171717] bg-[#F6F2EC] font-bold text-xs flex flex-col items-center gap-1">
+                <span class="material-symbols-outlined text-[20px]">payments</span> Cash
+              </button>
+              <button type="button" onclick="selectPaymentMode('UPI')" id="pay-btn-upi" class="pay-mode-btn p-3 rounded-xl border-2 border-[#E5DDD3] bg-white font-bold text-xs flex flex-col items-center gap-1">
+                <span class="material-symbols-outlined text-[20px]">qr_code_2</span> UPI
+              </button>
+              <button type="button" onclick="selectPaymentMode('CARD')" id="pay-btn-card" class="pay-mode-btn p-3 rounded-xl border-2 border-[#E5DDD3] bg-white font-bold text-xs flex flex-col items-center gap-1">
+                <span class="material-symbols-outlined text-[20px]">credit_card</span> Card
+              </button>
+            </div>
+          </div>
+
+          <!-- Cash Received Calculator (Visible in Cash Mode) -->
+          <div id="pay-cash-calc-wrap" class="flex flex-col gap-3 p-4 bg-[#F6F2EC] rounded-2xl border border-[#E5DDD3]">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-[#171717]">Amount Tendered (Cash)</label>
+              <div class="flex gap-1.5">
+                <button type="button" onclick="setCashTenderedExact()" class="px-2 py-0.5 rounded bg-white border border-[#E5DDD3] text-[11px] font-bold">Exact</button>
+                <button type="button" onclick="addCashTenderPreset(500)" class="px-2 py-0.5 rounded bg-white border border-[#E5DDD3] text-[11px] font-bold">₹500</button>
+                <button type="button" onclick="addCashTenderPreset(1000)" class="px-2 py-0.5 rounded bg-white border border-[#E5DDD3] text-[11px] font-bold">₹1000</button>
+              </div>
+            </div>
+
+            <input type="number" id="pay-cash-input" oninput="calculateChangeDue()" 
+              class="w-full text-2xl font-extrabold font-mono text-[#171717] p-3 rounded-xl bg-white border border-[#E5DDD3] focus:outline-none focus:border-[#C82026]">
+
+            <div class="flex items-center justify-between border-t border-[#E5DDD3] pt-2">
+              <span class="text-xs font-bold text-[#5C534B]">Change Due:</span>
+              <span class="text-2xl font-extrabold font-mono text-emerald-700" id="pay-change-due">₹0.00</span>
+            </div>
+          </div>
+
+          <!-- Dynamic UPI QR Code Box (Visible in UPI Mode) -->
+          <div id="pay-upi-qr-wrap" class="hidden flex flex-col items-center justify-center p-4 bg-[#FCFAF8] rounded-2xl border-2 border-dashed border-[#E5DDD3] text-center gap-2">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-[#171717]">
+              <span class="material-symbols-outlined text-[18px] text-blue-600">qr_code_scanner</span>
+              <span>Scan Dynamic UPI QR to Pay</span>
+            </div>
+            <!-- Dynamic QR Code SVG Target -->
+            <div id="pay-upi-qr-code" class="p-2 bg-white rounded-xl shadow-inner border border-[#E5DDD3] flex items-center justify-center">
+              <!-- Rendered dynamically -->
+            </div>
+            <div class="text-xs font-mono font-bold text-[#171717]" id="pay-upi-id-display">UPI ID: retrocafe@upi</div>
+            <p class="text-[11px] text-[#5C534B]">Scan with GPay, PhonePe, Paytm, BHIM.<br><span class="text-emerald-700 font-bold">Exact amount pre-filled automatically!</span></p>
+          </div>
+
+          <!-- Customer Phone, CRM & GSTIN Details -->
+          <div class="border-t border-[#E5DDD3] pt-3 flex flex-col gap-2">
+            <div class="flex items-center justify-between cursor-pointer" onclick="document.getElementById('pay-cust-fields').classList.toggle('hidden')">
+              <span class="text-xs font-bold text-[#5C534B] flex items-center gap-1">
+                <span class="material-symbols-outlined text-[16px]">person</span> Add Customer Details / GSTIN (Optional)
+              </span>
+              <span class="material-symbols-outlined text-[18px] text-[#5C534B]">expand_more</span>
+            </div>
+            <div id="pay-cust-fields" class="hidden flex flex-col gap-2 pt-2">
+              <input type="text" id="pay-cust-phone" oninput="onCustomerPhoneInput(this.value)" placeholder="Phone Number (10 digits)" class="px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none font-mono">
+              
+              <!-- Live CRM Match Banner -->
+              <div id="pay-crm-match-banner" class="hidden p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900">
+                <div class="flex flex-col">
+                  <span class="font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[15px] text-amber-700">stars</span> <span id="pay-crm-match-name">Customer</span></span>
+                  <span class="text-[11px] text-[#5C534B]" id="pay-crm-match-details">3 Visits • ₹640 spent</span>
+                </div>
+                <button type="button" onclick="repeatCustomerLastOrder()" class="px-2.5 py-1 bg-amber-700 text-white rounded-lg text-[10px] font-bold hover:bg-amber-800" title="Load last ordered items">
+                  Repeat Order
+                </button>
+              </div>
+
+              <input type="text" id="pay-cust-name" placeholder="Customer Name" class="px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none">
+              <input type="text" id="pay-cust-gstin" placeholder="Buyer GSTIN (for B2B invoice)" class="px-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-mono font-medium focus:bg-white focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Settle Action & Complimentary Button -->
+        <div class="p-6 border-t border-[#E5DDD3] bg-white flex flex-col gap-2.5">
+          <button onclick="executePaymentAndPrint()" class="btn-primary w-full !text-base !py-3.5 shadow-lg">
+            <span class="material-symbols-outlined text-[20px]">print</span>
+            <span>Print Tax Invoice & Settle (Enter)</span>
+          </button>
+          <button type="button" onclick="promptNCBillSettlement()" class="w-full py-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-amber-100 transition-colors">
+            <span class="material-symbols-outlined text-[18px]">card_giftcard</span>
+            <span>Complimentary / NC Bill (₹0 - Owner PIN Required)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 2: THERMAL RECEIPT PREVIEW & BROWSER PRINT -->
+    <div id="thermal-preview-modal" class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        <div class="p-4 border-b border-[#E5DDD3] flex items-center justify-between bg-[#FCFAF8]">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[#171717]">receipt</span>
+            <span class="font-extrabold text-sm text-[#171717]">Thermal Receipt Preview</span>
+          </div>
+          <button onclick="closeThermalPreview()" class="p-1 rounded-lg hover:bg-[#F6F2EC] text-[#5C534B]">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <!-- Paper Container -->
+        <div class="flex-1 overflow-y-auto p-4 bg-stone-100 flex justify-center">
+          <div id="thermal-paper-slip" class="receipt-paper receipt-80mm">
+            <!-- Plain monospace text injected by app.js -->
+          </div>
+        </div>
+
+        <!-- Bottom Actions -->
+        <div class="p-4 border-t border-[#E5DDD3] bg-white flex items-center justify-between">
+          <div class="text-xs text-[#5C534B]">
+            Format: <span id="preview-width-label" class="font-bold">80mm ESC/POS</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="window.print()" class="btn-primary !min-h-[38px] !py-1.5 !text-xs">
+              <span class="material-symbols-outlined text-[16px]">print</span> Print Now
+            </button>
+            <button onclick="closeThermalPreview()" class="btn-secondary !min-h-[38px] !py-1.5 !text-xs">
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 3: HELD ORDERS DRAWER (Spec §7.8) -->
+    <div id="held-orders-modal" class="fixed inset-0 bg-black/60 z-40 flex justify-end hidden">
+      <div class="w-full max-w-md bg-white h-full flex flex-col shadow-2xl overflow-y-auto">
+        <div class="p-4 border-b border-[#E5DDD3] flex items-center justify-between bg-[#FCFAF8]">
+          <div>
+            <h2 class="text-lg font-extrabold text-[#171717]">Held Orders</h2>
+            <p class="text-xs text-[#5C534B]">Resume parked takeaways and open checks.</p>
+          </div>
+          <button onclick="closeHeldOrdersModal()" class="p-1.5 rounded-lg hover:bg-[#F6F2EC] text-[#5C534B]">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        <div id="held-orders-list" class="flex-1 p-4 flex flex-col gap-3">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 4: OWNER PIN ELEVATION DIALOG -->
+    <div id="owner-elevation-modal" class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-xs w-full p-6 flex flex-col items-center shadow-2xl">
+        <div class="w-12 h-12 rounded-xl bg-red-100 text-[#C82026] flex items-center justify-center mb-3">
+          <span class="material-symbols-outlined text-[28px]">admin_panel_settings</span>
+        </div>
+        <h3 class="text-base font-extrabold text-[#171717]">Owner PIN Required</h3>
+        <p class="text-xs text-[#5C534B] text-center mt-1" id="elevation-action-desc">This action requires owner authorization.</p>
+
+        <input type="password" maxlength="4" id="elevation-pin-input" placeholder="••••" 
+          class="w-36 text-center text-3xl font-mono tracking-widest p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl my-4 focus:outline-none focus:border-[#C82026]">
+
+        <div id="elevation-error-msg" class="text-xs text-red-600 font-bold mb-3 h-4"></div>
+
+        <div class="flex gap-2 w-full">
+          <button onclick="closeOwnerElevationModal()" class="btn-secondary flex-1 !min-h-[38px] !text-xs">Cancel</button>
+          <button onclick="submitOwnerElevation()" class="btn-primary flex-1 !min-h-[38px] !text-xs">Authorize</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 5: CANCEL BILL WITH REASON DIALOG (Spec §7.9) -->
+    <div id="cancel-bill-modal" class="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-6 flex flex-col shadow-2xl">
+        <div class="flex items-center gap-3 text-red-700 mb-2">
+          <span class="material-symbols-outlined text-[28px]">cancel</span>
+          <h3 class="text-base font-extrabold text-[#171717]">Cancel Tax Invoice</h3>
+        </div>
+        <p class="text-xs text-[#5C534B]">The bill number stays in the consecutive sequence marked Cancelled. An audit log is recorded.</p>
+
+        <div class="my-3 p-3 bg-[#FCFAF8] rounded-xl border border-[#E5DDD3] text-xs">
+          <span class="font-bold text-[#171717]" id="cancel-bill-no-label">Bill No: PENDING</span>
+          <div class="text-[#5C534B] mt-0.5" id="cancel-bill-amt-label">Amount: ₹0.00</div>
+        </div>
+
+        <label class="block text-xs font-bold text-[#171717] mb-1">Mandatory Reason for Cancellation:</label>
+        <textarea id="cancel-reason-input" rows="2" placeholder="e.g. Order entered incorrectly, Guest left..." 
+          class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-medium focus:bg-white focus:outline-none mb-3"></textarea>
+
+        <label class="block text-xs font-bold text-[#171717] mb-1">Owner 4-Digit PIN:</label>
+        <input type="password" maxlength="4" id="cancel-owner-pin" placeholder="••••" 
+          class="w-full text-center text-xl font-mono tracking-widest p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:outline-none focus:border-[#C82026] mb-4">
+
+        <div class="flex gap-2">
+          <button onclick="closeCancelBillModal()" class="btn-secondary flex-1 !min-h-[40px] !text-xs">Go Back</button>
+          <button onclick="executeCancelBill()" class="btn-danger-outline flex-1 !min-h-[40px] !text-xs">
+            Confirm Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 6: DISCOUNT MODAL (F8) -->
+    <div id="discount-modal" class="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-5 flex flex-col shadow-2xl">
+        <h3 class="text-base font-extrabold text-[#171717]">Apply Discount</h3>
+        <p class="text-xs text-[#5C534B] mt-0.5">Applied before GST calculation per statutory rules.</p>
+
+        <div class="mt-4 flex gap-2">
+          <button type="button" onclick="setDiscountType('percent')" id="disc-btn-pct" class="flex-1 py-1.5 rounded-xl border-2 border-[#171717] bg-[#F6F2EC] text-xs font-bold">Percentage (%)</button>
+          <button type="button" onclick="setDiscountType('flat')" id="disc-btn-flat" class="flex-1 py-1.5 rounded-xl border-2 border-[#E5DDD3] bg-white text-xs font-bold">Flat Amount (₹)</button>
+        </div>
+
+        <input type="number" id="discount-val-input" placeholder="0" class="w-full text-2xl font-mono font-extrabold p-3 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl mt-3 text-center focus:outline-none">
+
+        <!-- Reason chips -->
+        <span class="text-[11px] font-bold text-[#5C534B] mt-3 block">Reason:</span>
+        <div class="flex flex-wrap gap-1.5 mt-1">
+          <button type="button" onclick="setDiscountReason('Regular Guest')" class="px-2.5 py-1 rounded-full bg-[#F6F2EC] border border-[#E5DDD3] text-[11px] font-medium hover:border-[#171717]">Regular Guest</button>
+          <button type="button" onclick="setDiscountReason('Student Offer')" class="px-2.5 py-1 rounded-full bg-[#F6F2EC] border border-[#E5DDD3] text-[11px] font-medium hover:border-[#171717]">Student Offer</button>
+          <button type="button" onclick="setDiscountReason('Staff Meal')" class="px-2.5 py-1 rounded-full bg-[#F6F2EC] border border-[#E5DDD3] text-[11px] font-medium hover:border-[#171717]">Staff Meal</button>
+          <button type="button" onclick="setDiscountReason('Management Promo')" class="px-2.5 py-1 rounded-full bg-[#F6F2EC] border border-[#E5DDD3] text-[11px] font-medium hover:border-[#171717]">Promo</button>
+        </div>
+
+        <div class="flex gap-2 mt-5">
+          <button onclick="closeDiscountModal()" class="btn-secondary flex-1 !min-h-[38px] !text-xs">Cancel</button>
+          <button onclick="applyDiscount()" class="btn-primary flex-1 !min-h-[38px] !text-xs">Apply</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 7: KEYBOARD SHORTCUTS CHEAT SHEET (?) -->
+    <div id="shortcuts-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between mb-4 border-b border-[#E5DDD3] pb-3">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[#171717]">keyboard</span>
+            <h3 class="text-base font-extrabold text-[#171717]">Keyboard Shortcuts (Spec §12)</h3>
+          </div>
+          <button onclick="toggleShortcutsModal()" class="text-[#5C534B] hover:text-[#171717]">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Counter Sale</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">F1</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Dine-in Tables</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">F2</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">New Takeaway</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">F3</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Held Orders</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">F4</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Focus Search</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">/ or Ctrl+F</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Add by Short-code</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">code + Enter</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Print Kitchen Slip</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">F6</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Apply Discount</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">F8</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Hold Order</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">F9</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Pay & Print Bill</span><kbd class="px-2 py-0.5 bg-[#171717] text-white rounded font-mono font-bold">F12</kbd></div>
+          <div class="flex items-center justify-between"><span class="text-[#5C534B]">Close / Back</span><kbd class="px-2 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">Esc</kbd></div>
+        </div>
+
+        <button onclick="toggleShortcutsModal()" class="btn-primary mt-5 !min-h-[38px] !text-xs">
+          Got it
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL 8: PRODUCT ADD/EDIT MODAL -->
+    <div id="product-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 flex flex-col shadow-2xl max-h-[90vh] overflow-y-auto">
+        <h3 class="text-base font-extrabold text-[#171717]" id="product-modal-title">Add New Product</h3>
+        
+        <form id="product-form" onsubmit="saveProduct(event)" class="mt-4 flex flex-col gap-3 text-xs">
+          <input type="hidden" id="prod-id">
+          
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Dish Name *</label>
+            <input type="text" id="prod-name" required placeholder="e.g. Chicken Burger" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Short-Code *</label>
+              <input type="text" id="prod-code" required placeholder="e.g. CB" uppercase
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl font-mono uppercase focus:bg-white focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Category *</label>
+              <select id="prod-category" required class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Base Price (₹) *</label>
+              <input type="number" step="1" id="prod-price" required placeholder="120"
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl font-mono font-bold focus:bg-white focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Diet Type</label>
+              <select id="prod-diet" class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+                <option value="non-veg">Non-Veg</option>
+                <option value="veg">Veg</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Portion Sizes & Prices (Optional)</label>
+            <input type="text" id="prod-sizes" placeholder="e.g. Regular: 120, Large: 160 (leave empty for single price)" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl font-mono focus:bg-white focus:outline-none">
+            <span class="text-[10px] text-[#5C534B] mt-0.5 block">Format: SizeName: Price, SizeName: Price</span>
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Add-ons with Extra Prices (Optional)</label>
+            <input type="text" id="prod-addons" placeholder="e.g. Extra Cheese: 20, Mayo Dip: 15, Extra Patty: 40" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl font-mono focus:bg-white focus:outline-none">
+            <span class="text-[10px] text-[#5C534B] mt-0.5 block">Format: AddonName: Price, AddonName: Price</span>
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Description (Optional)</label>
+            <input type="text" id="prod-desc" placeholder="Short line about ingredients" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Quick Note Chips (comma separated)</label>
+            <input type="text" id="prod-notes" placeholder="No onion, Extra spicy, Less sugar" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+          </div>
+
+          <div class="p-3 bg-[#F6F2EC] rounded-xl border border-[#E5DDD3] flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" id="prod-track-stock" onchange="toggleStockInputs(this.checked)" class="w-4 h-4 accent-[#171717]">
+                <label for="prod-track-stock" class="font-bold text-[#171717]">Track Critical Stock Counter</label>
+              </div>
+              <span class="text-[10px] text-[#5C534B]">Auto-decrements on order</span>
+            </div>
+            <div id="prod-stock-fields" class="hidden grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <label class="block font-semibold text-[#5C534B] mb-0.5">Current Stock</label>
+                <input type="number" id="prod-stock-qty" min="0" placeholder="e.g. 25" class="w-full p-2 bg-white border border-[#E5DDD3] rounded-lg font-mono font-bold focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-[#5C534B] mb-0.5">Low Alert At</label>
+                <input type="number" id="prod-stock-threshold" min="1" placeholder="e.g. 5" class="w-full p-2 bg-white border border-[#E5DDD3] rounded-lg font-mono focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="prod-available" checked class="w-4 h-4 accent-[#171717]">
+            <label for="prod-available" class="font-bold text-[#171717]">Available (Not Sold Out)</label>
+          </div>
+
+          <div class="flex gap-2 mt-4">
+            <button type="button" onclick="closeProductModal()" class="btn-secondary flex-1 !min-h-[38px]">Cancel</button>
+            <button type="submit" class="btn-primary flex-1 !min-h-[38px]">Save Dish</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL 8B: ITEM CUSTOMIZATION & OPTIONS (Sizes & Add-ons) -->
+    <div id="item-options-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-5 flex flex-col shadow-2xl">
+        <div class="flex items-start justify-between border-b border-[#E5DDD3] pb-3">
+          <div>
+            <h3 class="text-base font-extrabold text-[#171717]" id="opt-dish-name">Chicken Burger</h3>
+            <span class="text-xs text-[#5C534B]" id="opt-dish-category">Burgers</span>
+          </div>
+          <span class="text-lg font-extrabold font-mono text-[#C82026]" id="opt-total-price">₹120</span>
+        </div>
+
+        <!-- Sizes Selection -->
+        <div id="opt-sizes-container" class="mt-3 hidden">
+          <label class="block text-xs font-bold text-[#5C534B] mb-1.5 uppercase tracking-wider">Select Size</label>
+          <div id="opt-sizes-list" class="grid grid-cols-2 gap-2">
+            <!-- Dynamically populated buttons -->
+          </div>
+        </div>
+
+        <!-- Add-ons Selection -->
+        <div id="opt-addons-container" class="mt-3 hidden">
+          <label class="block text-xs font-bold text-[#5C534B] mb-1.5 uppercase tracking-wider">Add-ons</label>
+          <div id="opt-addons-list" class="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
+            <!-- Dynamically populated checkboxes -->
+          </div>
+        </div>
+
+        <!-- Cooking Notes Chips -->
+        <div id="opt-notes-container" class="mt-3">
+          <label class="block text-xs font-bold text-[#5C534B] mb-1.5 uppercase tracking-wider">Cooking Instructions</label>
+          <div id="opt-notes-chips" class="flex flex-wrap gap-1.5 mb-2">
+            <!-- Quick chips -->
+          </div>
+          <input type="text" id="opt-custom-note" placeholder="Custom note (e.g. less salt)..." 
+            class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs focus:bg-white focus:outline-none">
+        </div>
+
+        <div class="flex gap-2 mt-4 pt-2 border-t border-[#E5DDD3]">
+          <button type="button" onclick="closeItemOptionsModal()" class="btn-secondary flex-1 !min-h-[40px] !text-xs">Cancel</button>
+          <button type="button" onclick="confirmAddItemWithOptions()" class="btn-primary flex-1 !min-h-[40px] !text-xs">Add to Bill</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 9: BULK PRICE CHANGE MODAL -->
+    <div id="bulk-price-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-6 flex flex-col shadow-2xl">
+        <h3 class="text-base font-extrabold text-[#171717]">Bulk Price Adjustment</h3>
+        <p class="text-xs text-[#5C534B] mt-0.5">Adjust prices across an entire category with preview.</p>
+
+        <div class="mt-4 flex flex-col gap-3 text-xs">
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Target Category</label>
+            <select id="bulk-category-select" class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:outline-none">
+              <option value="all">All Categories</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Adjustment Type</label>
+            <select id="bulk-type-select" class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:outline-none">
+              <option value="percent">Percentage (+% or -%)</option>
+              <option value="flat">Flat Amount (+₹ or -₹)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Value (e.g. 5 for +5%, -10 for -10)</label>
+            <input type="number" step="0.5" id="bulk-value-input" placeholder="5" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl font-mono text-center font-bold focus:outline-none">
+          </div>
+
+          <div class="flex gap-2 mt-4">
+            <button onclick="closeBulkPriceModal()" class="btn-secondary flex-1 !min-h-[38px]">Cancel</button>
+            <button onclick="executeBulkPriceChange()" class="btn-primary flex-1 !min-h-[38px]">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 10: ADD / EDIT TABLE MODAL -->
+    <div id="table-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-6 flex flex-col shadow-2xl">
+        <h3 class="text-base font-extrabold text-[#171717]">Add / Edit Table</h3>
+
+        <form onsubmit="saveTableForm(event)" class="mt-4 flex flex-col gap-3 text-xs">
+          <input type="hidden" id="tbl-form-id">
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Table Name *</label>
+            <input type="text" id="tbl-form-name" required placeholder="e.g. Table 5, Garden 2" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Section</label>
+              <input type="text" id="tbl-form-section" placeholder="Main Hall" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Seats Count</label>
+              <input type="number" id="tbl-form-seats" value="4" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl font-mono focus:bg-white focus:outline-none">
+            </div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button type="button" onclick="closeTableModal()" class="btn-secondary flex-1 !min-h-[38px]">Cancel</button>
+            <button type="submit" class="btn-primary flex-1 !min-h-[38px]">Save Table</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL 11: QUICK CRITICAL STOCK MANAGER -->
+    <div id="stock-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-2xl w-full p-6 flex flex-col shadow-2xl max-h-[85vh] overflow-hidden">
+        <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-3">
+          <div>
+            <h3 class="text-base font-extrabold text-[#171717] flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[20px] text-amber-700">inventory_2</span>
+              <span>Critical Stock Counter Manager</span>
+            </h3>
+            <p class="text-xs text-[#5C534B]">Real-time dish counters. Items automatically mark as SOLD OUT when stock reaches 0.</p>
+          </div>
+          <button onclick="closeStockManagerModal()" class="p-1 rounded-lg hover:bg-[#F6F2EC] text-[#5C534B]">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <div class="my-3 flex items-center justify-between gap-2">
+          <span class="text-xs text-[#5C534B]" id="stock-modal-summary">Tracking 0 items</span>
+          <div class="flex gap-1.5">
+            <button onclick="refillAllStock(10)" class="px-2.5 py-1 bg-[#F6F2EC] hover:bg-[#E5DDD3] rounded-lg text-xs font-bold text-[#171717]">
+              +10 All Items
+            </button>
+            <button onclick="refillAllStock(25)" class="px-2.5 py-1 bg-[#171717] text-white rounded-lg text-xs font-bold hover:bg-stone-800">
+              Refill All (+25)
+            </button>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto border border-[#E5DDD3] rounded-xl">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-[#FCFAF8] text-[#5C534B] uppercase font-bold sticky top-0 border-b border-[#E5DDD3]">
+              <tr>
+                <th class="p-2.5 pl-3">Dish</th>
+                <th class="p-2.5">Category</th>
+                <th class="p-2.5 text-center">Current Qty</th>
+                <th class="p-2.5 text-center">Alert At</th>
+                <th class="p-2.5 text-center">Status</th>
+                <th class="p-2.5 pr-3 text-right">Quick Refill</th>
+              </tr>
+            </thead>
+            <tbody id="stock-table-body" class="divide-y divide-[#F6F2EC]">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-[#E5DDD3] flex justify-end gap-2">
+          <button onclick="closeStockManagerModal()" class="btn-primary !min-h-[38px] !text-xs px-5">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 12: COMPLIMENTARY (NC) REASON MODAL -->
+    <div id="nc-reason-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 flex flex-col shadow-2xl animate-pop">
+        <div class="flex items-center gap-2 text-amber-900 border-b border-[#E5DDD3] pb-3">
+          <span class="material-symbols-outlined text-[24px] text-amber-600">card_giftcard</span>
+          <div>
+            <h3 class="text-base font-extrabold text-[#171717]">Issue Complimentary / NC Bill</h3>
+            <p class="text-xs text-[#5C534B]">Waives 100% amount (₹0.00 bill) and sends instant alert to Owner.</p>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-col gap-3 text-xs">
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Select NC Authorization Reason *</label>
+            <select id="nc-reason-select" onchange="onNCReasonSelectChange(this.value)" class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:outline-none font-semibold">
+              <option value="VIP Guest / Owner Friend">VIP Guest / Owner Friend</option>
+              <option value="Food Quality Issue / Food Replaced">Food Quality Issue / Food Replaced</option>
+              <option value="Staff / Crew Meal">Staff / Crew Meal</option>
+              <option value="Influencer / Marketing Promotion">Influencer / Marketing Promotion</option>
+              <option value="Other">Other (Enter custom reason below)</option>
+            </select>
+          </div>
+
+          <div id="nc-custom-reason-wrap" class="hidden">
+            <label class="block font-bold text-[#5C534B] mb-1">Custom NC Reason *</label>
+            <input type="text" id="nc-custom-reason" placeholder="e.g. Tasting session, neighbor courtesy" class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+          </div>
+
+          <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+            <span class="font-bold">⚠️ Store Policy:</span> Non-chargeable bills are strictly audited. The restaurant owner will receive an immediate WhatsApp notification with the bill number, cashier name, and line items waived.
+          </div>
+
+          <div class="flex gap-2 mt-2">
+            <button type="button" onclick="closeNCReasonModal()" class="btn-secondary flex-1 !min-h-[38px]">Cancel</button>
+            <button type="button" onclick="confirmNCBillSettlement()" class="btn-primary !min-h-[38px] flex-1 !bg-amber-700 hover:!bg-amber-800">
+              Confirm & Settle ₹0 Bill
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- PRINTABLE HIDDEN SECTION FOR PHYSICAL THERMAL PRINTING -->
+  <div id="printable-area" class="hidden">
+    <pre id="printable-text" class="receipt-paper"></pre>
+  </div>
+
+  <!-- CORE SCRIPTS -->
+  <script src="src/core/tax.js"></script>
+  <script src="src/core/cart.js"></script>
+  <script src="src/core/auth.js"></script>
+  <script src="src/core/storage.js"></script>
+  <script src="src/core/escpos.js"></script>
+  <script src="src/core/qr.js"></script>
+  <script src="src/data/defaultCatalog.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

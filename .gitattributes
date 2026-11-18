@@ -1,0 +1,4 @@
+# Enforce consistent line endings across operating systems
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary

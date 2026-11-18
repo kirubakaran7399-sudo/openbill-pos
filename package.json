@@ -1,0 +1,21 @@
+{
+  "name": "openbill-retro-cafeteria-pos",
+  "version": "3.0.0",
+  "description": "The Retro Cafeteria: POS Billing Software with Statutory Indian GST Compliance (Tamil Nadu / Kanchipuram) and OpenBill Semantic Thermal Printing Engine",
+  "main": "index.html",
+  "scripts": {
+    "start": "python server.py",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "pos",
+    "restaurant",
+    "openbill",
+    "gst",
+    "escpos",
+    "thermal-printer",
+    "retro-cafeteria"
+  ],
+  "author": "OpenBill / Retro Cafeteria Team",
+  "license": "MIT"
+}
