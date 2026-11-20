@@ -596,7 +596,20 @@ function renderHomeRecentBills() {
 }
 
 /**
- * Computes and renders the top 3 selling dishes today on Home.
+ * Triggers a tactile physical keypress animation on the matching hotkey keycap.
+ */
+function flashHotkeyKeycap(keyName) {
+  const cap = document.getElementById(`hotkey-cap-${keyName}`);
+  if (cap) {
+    cap.classList.add("key-pressed");
+    setTimeout(() => {
+      cap.classList.remove("key-pressed");
+    }, 180);
+  }
+}
+
+/**
+ * Computes and renders the top selling dishes with animated volume progress meters.
  */
 function renderHomeTopSellers() {
   const container = document.getElementById("home-top-sellers-list");
@@ -604,49 +617,100 @@ function renderHomeTopSellers() {
   container.innerHTML = "";
 
   const todayStr = PosStorage.getLocalDateString();
-  const todayBills = (appState.salesLedger || []).filter(b => !b.isCancelled && (b.date === todayStr || (b.timestamp && b.timestamp.startsWith(todayStr))));
+  const allBills = (appState.salesLedger || []).filter(b => !b.isCancelled);
+  const todayBills = allBills.filter(b => (b.date === todayStr || (b.timestamp && b.timestamp.startsWith(todayStr))));
 
-  // If no bills today, fallback to recent 10 bills to show popular dishes
-  const billsToAnalyze = todayBills.length > 0 ? todayBills : (appState.salesLedger || []).filter(b => !b.isCancelled).slice(0, 10);
+  // If no bills today, fallback to recent sales to show popular menu items
+  const isFallback = todayBills.length === 0;
+  const billsToAnalyze = !isFallback ? todayBills : allBills.slice(0, 15);
 
   const countMap = {};
+  const revenueMap = {};
+  let totalDishesCount = 0;
+
   billsToAnalyze.forEach(b => {
     (b.items || []).forEach(it => {
       if (it && it.name) {
-        countMap[it.name] = (countMap[it.name] || 0) + (it.qty || 1);
+        const qty = it.qty || 1;
+        const price = Number(it.unitPrice ?? it.price ?? it.basePrice ?? 0);
+        countMap[it.name] = (countMap[it.name] || 0) + qty;
+        revenueMap[it.name] = (revenueMap[it.name] || 0) + (price * qty);
+        totalDishesCount += qty;
       }
     });
   });
 
   const sortedDishes = Object.keys(countMap)
-    .map(name => ({ name, count: countMap[name] }))
+    .map(name => ({
+      name,
+      count: countMap[name],
+      revenue: revenueMap[name] || 0,
+      pct: totalDishesCount > 0 ? Math.round((countMap[name] / totalDishesCount) * 100) : 0
+    }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 3);
 
+  const badgeEl = document.getElementById("home-top-sellers-badge");
+  if (badgeEl) {
+    badgeEl.textContent = isFallback && sortedDishes.length > 0 ? "Popular" : "Today";
+  }
+
   if (sortedDishes.length === 0) {
     container.innerHTML = `
-      <div class="p-3 text-center text-[#5C534B] text-xs">
-        <span>No dish orders recorded yet today.</span>
+      <div class="py-5 px-3 text-center flex flex-col items-center justify-center">
+        <div class="w-10 h-10 rounded-2xl bg-[#EFE3D6] text-[#6B4226] flex items-center justify-center mb-2">
+          <span class="material-symbols-outlined text-[20px]">restaurant_menu</span>
+        </div>
+        <h4 class="font-extrabold text-[#171717] text-xs">No orders recorded yet</h4>
+        <p class="text-[11px] text-[#5C534B] mt-0.5">Sales metrics & progress bars will rank here automatically.</p>
+        <button onclick="startNewOrder('counter')" class="mt-2.5 px-3 py-1 rounded-xl bg-[#171717] hover:bg-[#2E2E2E] text-white text-[11px] font-bold transition-colors shadow-xs flex items-center gap-1 cursor-pointer">
+          <span class="material-symbols-outlined text-[13px]">add</span>
+          <span>Ring Up Sale (F1)</span>
+        </button>
       </div>
     `;
     return;
   }
 
+  const maxCount = sortedDishes[0]?.count || 1;
+
   sortedDishes.forEach((item, idx) => {
-    const rankColors = [
-      "bg-amber-400 text-amber-950",
-      "bg-stone-300 text-stone-900",
-      "bg-amber-700 text-white"
+    const rankBadges = [
+      "bg-amber-400 text-amber-950 font-black",
+      "bg-stone-300 text-stone-900 font-bold",
+      "bg-amber-700 text-white font-bold"
     ];
-    const rankBadge = rankColors[idx] || "bg-stone-200 text-stone-800";
+    const rankStyle = rankBadges[idx] || "bg-stone-200 text-stone-800";
+    const relativePct = Math.round((item.count / maxCount) * 100);
+
     const div = document.createElement("div");
-    div.className = "flex items-center justify-between p-2 rounded-xl bg-[#FCFAF8] border border-[#E5DDD3]";
+    div.className = "flex flex-col gap-1.5 p-2.5 rounded-xl bg-[#FCFAF8] hover:bg-white border border-[#E5DDD3] hover:border-[#171717] transition-colors group cursor-pointer";
+    div.onclick = () => {
+      navigateTo("pos");
+      const searchInput = document.getElementById("pos-search-input");
+      if (searchInput) {
+        searchInput.value = item.name;
+        renderPosItems();
+      }
+    };
+    div.title = `Click to filter "${item.name}" in Billing POS`;
+
     div.innerHTML = `
-      <div class="flex items-center gap-2 min-w-0">
-        <span class="w-5 h-5 rounded-full ${rankBadge} text-[10px] font-mono font-extrabold flex items-center justify-center shrink-0">#${idx + 1}</span>
-        <span class="text-xs font-bold text-[#171717] truncate">${escapeHtml(item.name)}</span>
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="w-5 h-5 rounded-lg ${rankStyle} text-[10px] font-mono flex items-center justify-center shrink-0">
+            ${idx + 1}
+          </span>
+          <span class="text-xs font-bold text-[#171717] truncate group-hover:text-[#C82026] transition-colors">${escapeHtml(item.name)}</span>
+        </div>
+        <div class="text-right shrink-0">
+          <span class="text-xs font-mono font-extrabold text-[#171717]">${item.count} sold</span>
+          <span class="text-[10px] text-[#5C534B] font-mono block">₹${item.revenue.toFixed(2)}</span>
+        </div>
       </div>
-      <span class="text-xs font-mono font-bold text-[#C82026] shrink-0">${item.count} sold</span>
+      <div class="w-full bg-[#E5DDD3]/60 rounded-full h-1.5 overflow-hidden">
+        <div class="h-full rounded-full transition-all duration-700 ease-out ${idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-stone-600' : 'bg-amber-700'}" style="width: ${relativePct}%"></div>
+      </div>
     `;
     container.appendChild(div);
   });
@@ -3669,27 +3733,33 @@ function setupKeyboardShortcuts() {
 
     if (e.key === "F1") {
       e.preventDefault();
+      flashHotkeyKeycap("F1");
       startNewOrder("counter");
     } else if (e.key === "F2") {
       e.preventDefault();
+      flashHotkeyKeycap("F2");
       navigateTo("tables");
     } else if (e.key === "F3") {
       e.preventDefault();
+      flashHotkeyKeycap("F3");
       startNewOrder("takeaway");
     } else if (e.key === "F4") {
       e.preventDefault();
       openHeldOrdersModal();
     } else if (e.key === "F6") {
       e.preventDefault();
+      flashHotkeyKeycap("F6");
       printKitchenSlip();
     } else if (e.key === "F8") {
       e.preventDefault();
       openDiscountModal();
     } else if (e.key === "F9") {
       e.preventDefault();
+      flashHotkeyKeycap("F9");
       holdCurrentOrder();
     } else if (e.key === "F12" || (e.ctrlKey && e.key === "Enter")) {
       e.preventDefault();
+      flashHotkeyKeycap("F12");
       if (document.getElementById("payment-modal").classList.contains("hidden")) {
         openPaymentDrawer();
       } else {

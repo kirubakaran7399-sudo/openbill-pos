@@ -219,15 +219,9 @@
         </nav>
       </div>
 
-      <!-- Bottom Sidebar Status Widget -->
-      <div class="p-2.5 border-t border-[#F6F2EC] flex flex-col gap-2">
-        <div class="sidebar-footer-text p-2 rounded-xl bg-[#FCFAF8] border border-[#E5DDD3] flex items-center justify-between text-[11px]">
-          <div class="flex items-center gap-1.5 text-emerald-700 font-bold">
-            <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-            <span>Local DB Ready</span>
-          </div>
-          <span class="text-stone-400 font-mono text-[10px]">v3.3.0</span>
-        </div>
+      <!-- Bottom Sidebar Footer -->
+      <div class="p-2.5 border-t border-[#F6F2EC] flex items-center justify-center">
+        <span class="sidebar-footer-text text-stone-400 font-mono text-[11px]">v3.3.0</span>
       </div>
     </aside>
 
@@ -252,8 +246,6 @@
               <span>Logged in as <strong id="home-cashier-label" class="text-[#171717]">Store Owner</strong></span>
               <span>•</span>
               <span id="home-shift-date">Today's Register</span>
-              <span>•</span>
-              <span class="text-emerald-700 font-semibold flex items-center gap-0.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block"></span> Local DB Ready</span>
             </p>
           </div>
         </div>
@@ -275,7 +267,7 @@
       <!-- 2. Big Order Launchers (3-Column Action Hub) -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Counter Sale Tile -->
-        <div onclick="startNewOrder('counter')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-xs hover:shadow-md flex flex-col justify-between group active:scale-[0.99]">
+        <div onclick="startNewOrder('counter')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-colors shadow-xs flex flex-col justify-between group">
           <div>
             <div class="flex items-center justify-between">
               <div class="w-11 h-11 rounded-xl bg-[#171717] text-white flex items-center justify-center shadow-xs">
@@ -289,14 +281,14 @@
             <h2 class="text-lg font-extrabold text-[#171717] mt-3 group-hover:text-[#C82026] transition-colors">Counter Sale</h2>
             <p class="text-xs text-[#5C534B] mt-1">Direct walk-in checkout. 3-step billing with auto UPI QR and thermal print.</p>
           </div>
-          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026]">
+          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026] transition-colors">
             <span>Start Counter Order</span>
-            <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
           </div>
         </div>
 
         <!-- Dine-in Tables Tile -->
-        <div onclick="navigateTo('tables')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-xs hover:shadow-md flex flex-col justify-between group active:scale-[0.99]">
+        <div onclick="navigateTo('tables')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-colors shadow-xs flex flex-col justify-between group">
           <div>
             <div class="flex items-center justify-between">
               <div class="w-11 h-11 rounded-xl bg-[#6B4226] text-white flex items-center justify-center shadow-xs">
@@ -310,14 +302,14 @@
             <h2 class="text-lg font-extrabold text-[#171717] mt-3 group-hover:text-[#6B4226] transition-colors">Dine-in Floor Plan</h2>
             <p class="text-xs text-[#5C534B] mt-1">Main Hall & AC Section tables. Multi-round KOT kitchen tickets & table transfers.</p>
           </div>
-          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#6B4226]">
+          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#6B4226] transition-colors">
             <span id="home-tables-status">Select Table</span>
-            <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
           </div>
         </div>
 
         <!-- Takeaway Tile -->
-        <div onclick="startNewOrder('takeaway')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-xs hover:shadow-md flex flex-col justify-between group active:scale-[0.99]">
+        <div onclick="startNewOrder('takeaway')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-colors shadow-xs flex flex-col justify-between group">
           <div>
             <div class="flex items-center justify-between">
               <div class="w-11 h-11 rounded-xl bg-[#171717] text-white flex items-center justify-center shadow-xs">
@@ -331,9 +323,9 @@
             <h2 class="text-lg font-extrabold text-[#171717] mt-3 group-hover:text-[#C82026] transition-colors">Takeaway Parcel</h2>
             <p class="text-xs text-[#5C534B] mt-1">Packed food orders with customer name, phone, parcel token & kitchen dispatch.</p>
           </div>
-          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026]">
+          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026] transition-colors">
             <span>New Takeaway</span>
-            <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
           </div>
         </div>
       </div>
@@ -449,57 +441,103 @@
           </div>
         </div>
 
-        <!-- Right 1 Col: Top Sellers & Essential Hotkeys -->
+        <!-- Right 1 Col: Top Sellers & Interactive Tactile Hotkeys -->
         <div class="flex flex-col gap-4">
-          <!-- Top Selling Dishes Today -->
+          <!-- Top Selling Dishes Today (Card 1) -->
           <div class="bg-white p-4.5 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col gap-3">
             <div class="flex items-center justify-between border-b border-[#F6F2EC] pb-2.5">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-amber-600">local_fire_department</span>
-                <h3 class="text-xs font-extrabold text-[#171717] uppercase tracking-wider">Top Selling Dishes</h3>
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-[#F6F2EC] text-[#171717] flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[18px]">trending_up</span>
+                </div>
+                <div>
+                  <h3 class="text-xs font-extrabold text-[#171717] uppercase tracking-wider">Top Selling Dishes</h3>
+                  <span class="text-[10px] text-[#5C534B]">Real-time sales volume</span>
+                </div>
               </div>
-              <span class="text-[11px] text-[#5C534B]">Today</span>
+              <span id="home-top-sellers-badge" class="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-[#F6F2EC] text-[#5C534B]">Today</span>
             </div>
-            <div id="home-top-sellers-list" class="flex flex-col gap-2">
-              <!-- Populated dynamically by refreshHomeStats() -->
+            <div id="home-top-sellers-list" class="flex flex-col gap-2 min-h-[110px] justify-center">
+              <!-- Populated dynamically -->
             </div>
           </div>
 
-          <!-- POS Hotkey Reference Box -->
-          <div class="bg-[#FCFAF8] p-4.5 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col gap-2.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-[#171717] flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[16px] text-[#5C534B]">keyboard</span> Quick POS Hotkeys
-              </span>
-              <button onclick="testThermalPrint()" class="text-[11px] font-semibold text-[#6B4226] hover:underline flex items-center gap-0.5 cursor-pointer">
-                <span class="material-symbols-outlined text-[13px]">print</span> Test Slip
+          <!-- POS Hotkey Console (Card 2) -->
+          <div class="bg-white p-4.5 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col gap-3">
+            <div class="flex items-center justify-between border-b border-[#F6F2EC] pb-2.5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-[#F6F2EC] text-[#171717] flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[18px]">keyboard</span>
+                </div>
+                <div>
+                  <h3 class="text-xs font-extrabold text-[#171717] uppercase tracking-wider">POS Shortcuts</h3>
+                  <span class="text-[10px] text-[#5C534B]">Quick keyboard access</span>
+                </div>
+              </div>
+              <button onclick="testThermalPrint()" class="text-[11px] font-bold text-[#6B4226] hover:text-[#C82026] hover:underline flex items-center gap-1 cursor-pointer transition-colors" title="Print a test slip to verify printer connection">
+                <span class="material-symbols-outlined text-[14px]">print</span>
+                <span>Test Slip</span>
               </button>
             </div>
-            <div class="grid grid-cols-2 gap-1.5 text-[11px]">
-              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
-                <span class="text-[#5C534B]">Counter Order</span>
-                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F1</kbd>
-              </div>
-              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
-                <span class="text-[#5C534B]">Floor Tables</span>
-                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F2</kbd>
-              </div>
-              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
-                <span class="text-[#5C534B]">Takeaway</span>
-                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F3</kbd>
-              </div>
-              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
-                <span class="text-[#5C534B]">Kitchen KOT</span>
-                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F6</kbd>
-              </div>
-              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
-                <span class="text-[#5C534B]">Held Orders</span>
-                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F9</kbd>
-              </div>
-              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
-                <span class="text-[#5C534B]">Pay & Print</span>
-                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#171717] text-white">F12</kbd>
-              </div>
+            
+            <!-- Clickable hotkey grid -->
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <button onclick="startNewOrder('counter')" class="hotkey-btn flex items-center justify-between p-2.5 rounded-xl bg-[#FCFAF8] hover:bg-stone-100 border border-[#E5DDD3] hover:border-[#171717] transition-colors cursor-pointer shadow-xs group text-left">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-[#5C534B] group-hover:text-[#171717] transition-colors">point_of_sale</span>
+                  <span class="font-bold text-[#171717] text-[11px]">Counter</span>
+                </div>
+                <kbd class="hotkey-keycap" id="hotkey-cap-F1">F1</kbd>
+              </button>
+
+              <button onclick="navigateTo('tables')" class="hotkey-btn flex items-center justify-between p-2.5 rounded-xl bg-[#FCFAF8] hover:bg-stone-100 border border-[#E5DDD3] hover:border-[#171717] transition-colors cursor-pointer shadow-xs group text-left">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-[#5C534B] group-hover:text-[#171717] transition-colors">table_restaurant</span>
+                  <span class="font-bold text-[#171717] text-[11px]">Tables</span>
+                </div>
+                <kbd class="hotkey-keycap" id="hotkey-cap-F2">F2</kbd>
+              </button>
+
+              <button onclick="startNewOrder('takeaway')" class="hotkey-btn flex items-center justify-between p-2.5 rounded-xl bg-[#FCFAF8] hover:bg-stone-100 border border-[#E5DDD3] hover:border-[#171717] transition-colors cursor-pointer shadow-xs group text-left">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-[#5C534B] group-hover:text-[#171717] transition-colors">takeout_dining</span>
+                  <span class="font-bold text-[#171717] text-[11px]">Takeaway</span>
+                </div>
+                <kbd class="hotkey-keycap" id="hotkey-cap-F3">F3</kbd>
+              </button>
+
+              <button onclick="navigateTo('pos')" class="hotkey-btn flex items-center justify-between p-2.5 rounded-xl bg-[#FCFAF8] hover:bg-stone-100 border border-[#E5DDD3] hover:border-[#171717] transition-colors cursor-pointer shadow-xs group text-left">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-[#5C534B] group-hover:text-[#171717] transition-colors">soup_kitchen</span>
+                  <span class="font-bold text-[#171717] text-[11px]">Kitchen KOT</span>
+                </div>
+                <kbd class="hotkey-keycap" id="hotkey-cap-F6">F6</kbd>
+              </button>
+
+              <button onclick="navigateTo('held')" class="hotkey-btn flex items-center justify-between p-2.5 rounded-xl bg-[#FCFAF8] hover:bg-stone-100 border border-[#E5DDD3] hover:border-[#171717] transition-colors cursor-pointer shadow-xs group text-left">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-[#5C534B] group-hover:text-[#171717] transition-colors">pause_circle</span>
+                  <span class="font-bold text-[#171717] text-[11px]">Held Bills</span>
+                </div>
+                <kbd class="hotkey-keycap" id="hotkey-cap-F9">F9</kbd>
+              </button>
+
+              <button onclick="navigateTo('pos')" class="hotkey-btn flex items-center justify-between p-2.5 rounded-xl bg-[#FCFAF8] hover:bg-stone-100 border border-[#E5DDD3] hover:border-[#171717] transition-colors cursor-pointer shadow-xs group text-left">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] text-[#5C534B] group-hover:text-[#171717] transition-colors">receipt_long</span>
+                  <span class="font-bold text-[#171717] text-[11px]">Pay & Print</span>
+                </div>
+                <kbd class="hotkey-keycap" id="hotkey-cap-F12">F12</kbd>
+              </button>
+            </div>
+
+            <!-- Footer micro-hint -->
+            <div class="flex items-center justify-between pt-2 border-t border-[#F6F2EC] text-[10px] text-[#5C534B]">
+              <span class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block"></span>
+                <span>Keyboard listener active</span>
+              </span>
+              <span>Press <kbd class="px-1 py-0.2 rounded bg-stone-200 font-mono font-bold text-[#171717]">?</kbd> for help</span>
             </div>
           </div>
         </div>
