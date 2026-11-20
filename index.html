@@ -385,20 +385,7 @@
     <!-- VIEW 2: BILLING POS ORDER ENTRY (The Core Billing Screen, Spec §7.5) -->
     <section id="view-pos" class="view-panel w-full h-full flex flex-row overflow-hidden hidden">
 
-      <!-- LEFT COLUMN: Categories Rail (~160px) -->
-      <aside class="w-44 bg-white border-r border-[#E5DDD3] flex flex-col shrink-0 select-none">
-        <div class="p-3 border-b border-[#E5DDD3] flex items-center justify-between">
-          <span class="text-xs font-bold text-[#171717] uppercase tracking-wider">Categories</span>
-          <button onclick="navigateTo('menu')" class="text-xs text-[#C82026] hover:underline flex items-center" title="Edit Categories">
-            <span class="material-symbols-outlined text-[16px]">edit</span>
-          </button>
-        </div>
-        <div id="pos-categories-list" class="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
-          <!-- Populated dynamically by app.js -->
-        </div>
-      </aside>
-
-      <!-- CENTER COLUMN: Search & Item Grid (Flexible) -->
+      <!-- MAIN COLUMN: Search, Categories & Item Grid (Flexible) -->
       <section class="flex-1 flex flex-col bg-[#F6F2EC] overflow-hidden min-w-0">
         <!-- Top Toolbar: Search & Order Mode Selector -->
         <div class="bg-white border-b border-[#E5DDD3] p-3 flex flex-wrap items-center justify-between gap-3">
@@ -443,8 +430,19 @@
           </div>
         </div>
 
+        <!-- Horizontal Category Pills Rail (Left-to-Right below Search & Order Modes) -->
+        <div class="bg-white border-b border-[#E5DDD3] px-3 py-2 flex items-center justify-between gap-2 shrink-0 shadow-xs">
+          <div id="pos-categories-list" class="flex-1 flex items-center gap-2 overflow-x-auto select-none no-scrollbar py-0.5">
+            <!-- Populated dynamically by app.js as horizontal pills -->
+          </div>
+          <button onclick="navigateTo('menu')" class="shrink-0 px-2.5 py-1.5 rounded-xl text-[#5C534B] hover:text-[#C82026] hover:bg-[#F6F2EC] border border-[#E5DDD3] transition-all flex items-center gap-1 text-xs font-semibold cursor-pointer active:scale-95" title="Manage Menu Categories">
+            <span class="material-symbols-outlined text-[16px]">edit</span>
+            <span class="hidden md:inline text-[11px]">Edit</span>
+          </button>
+        </div>
+
         <!-- Item Cards Grid -->
-        <div id="pos-items-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3.5 content-start">
+        <div id="pos-items-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 content-start">
           <!-- Populated dynamically by app.js -->
         </div>
 
@@ -923,22 +921,30 @@
         </div>
       </div>
 
-      <!-- Sub-Tab Navigation Bar -->
-      <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-[#E5DDD3] shadow-sm select-none overflow-x-auto">
-        <button onclick="switchInventorySubtab('items')" id="subtab-inv-items" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#171717] text-white whitespace-nowrap">
-          Raw Materials & Stock
+      <!-- Sub-Tab Navigation Bar with Animated Sliding Pill -->
+      <div id="inv-subtab-container" class="relative flex items-center gap-1.5 bg-[#F6F2EC] p-1.5 rounded-2xl border border-[#E5DDD3] shadow-inner select-none overflow-x-auto no-scrollbar shrink-0">
+        <!-- Floating Animated Sliding Indicator -->
+        <div id="inv-subtab-slider" class="absolute rounded-xl bg-[#171717] shadow-md transition-all duration-250 ease-out pointer-events-none" style="top: 6px; bottom: 6px; left: 6px; width: 0; opacity: 0;"></div>
+
+        <button onclick="switchInventorySubtab('items')" id="subtab-inv-items" class="inv-subtab-btn relative z-10 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex items-center gap-2 cursor-pointer text-white">
+          <span class="material-symbols-outlined text-[16px] text-amber-400">inventory_2</span>
+          <span>Raw Materials & Stock</span>
         </button>
-        <button onclick="switchInventorySubtab('recipes')" id="subtab-inv-recipes" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap">
-          Recipe / BOM Mapping
+        <button onclick="switchInventorySubtab('recipes')" id="subtab-inv-recipes" class="inv-subtab-btn relative z-10 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex items-center gap-2 cursor-pointer text-[#5C534B] hover:text-[#171717]">
+          <span class="material-symbols-outlined text-[16px]">menu_book</span>
+          <span>Recipe / BOM Mapping</span>
         </button>
-        <button onclick="switchInventorySubtab('inward')" id="subtab-inv-inward" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap">
-          Purchase Inwards (GRN)
+        <button onclick="switchInventorySubtab('inward')" id="subtab-inv-inward" class="inv-subtab-btn relative z-10 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex items-center gap-2 cursor-pointer text-[#5C534B] hover:text-[#171717]">
+          <span class="material-symbols-outlined text-[16px]">local_shipping</span>
+          <span>Purchase Inwards (GRN)</span>
         </button>
-        <button onclick="switchInventorySubtab('wastage')" id="subtab-inv-wastage" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap">
-          Kitchen Wastage
+        <button onclick="switchInventorySubtab('wastage')" id="subtab-inv-wastage" class="inv-subtab-btn relative z-10 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex items-center gap-2 cursor-pointer text-[#5C534B] hover:text-[#171717]">
+          <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+          <span>Kitchen Wastage</span>
         </button>
-        <button onclick="switchInventorySubtab('audit')" id="subtab-inv-audit" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap">
-          Physical Count Audit
+        <button onclick="switchInventorySubtab('audit')" id="subtab-inv-audit" class="inv-subtab-btn relative z-10 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex items-center gap-2 cursor-pointer text-[#5C534B] hover:text-[#171717]">
+          <span class="material-symbols-outlined text-[16px]">fact_check</span>
+          <span>Physical Count Audit</span>
         </button>
       </div>
 

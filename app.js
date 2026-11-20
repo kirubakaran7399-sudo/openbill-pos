@@ -673,20 +673,49 @@ function onPosTableSelected(tableId) {
 
 function renderPosCategories() {
   const container = document.getElementById("pos-categories-list");
+  if (!container) return;
   container.innerHTML = "";
+
+  const products = appState.products || [];
+  const totalCount = products.length;
+  const isAllActive = activePosCategoryFilter === "all";
 
   // "All Items" Category button
   const allBtn = document.createElement("button");
-  allBtn.className = "cat-pill p-2.5 rounded-xl text-left text-xs font-bold flex items-center justify-between transition-all bg-[#171717] text-white";
-  allBtn.innerHTML = `<span>All Menu</span><span class="text-[10px] bg-stone-700 px-1.5 py-0.2 rounded-full">${(appState.products || []).length}</span>`;
+  allBtn.type = "button";
+  allBtn.className = `cat-pill px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 cursor-pointer transition-all duration-150 ${
+    isAllActive
+      ? "bg-[#171717] text-white shadow-sm ring-1 ring-[#171717]"
+      : "bg-[#F6F2EC] text-[#5C534B] hover:text-[#171717] hover:bg-stone-200/70 border border-[#E5DDD3]"
+  }`;
+  allBtn.innerHTML = `
+    <span class="material-symbols-outlined text-[15px] ${isAllActive ? "text-amber-400" : "text-[#5C534B]"}">restaurant_menu</span>
+    <span>All Menu</span>
+    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold ${
+      isAllActive ? "bg-white/20 text-white" : "bg-stone-200 text-[#5C534B]"
+    }">${totalCount}</span>
+  `;
   allBtn.onclick = () => filterPosCategory("all", allBtn);
   container.appendChild(allBtn);
 
   (appState.categories || []).forEach(cat => {
-    const count = (appState.products || []).filter(p => p.category === cat.name).length;
+    const count = products.filter(p => p.category === cat.name).length;
+    const isAct = activePosCategoryFilter === cat.name;
     const btn = document.createElement("button");
-    btn.className = "cat-pill p-2.5 rounded-xl text-left text-xs font-semibold flex items-center justify-between transition-all text-[#5C534B] hover:bg-[#F6F2EC]";
-    btn.innerHTML = `<span>${cat.name}</span><span class="text-[10px] bg-stone-200 text-stone-600 px-1.5 py-0.2 rounded-full">${count}</span>`;
+    btn.type = "button";
+    btn.className = `cat-pill px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 cursor-pointer transition-all duration-150 ${
+      isAct
+        ? "bg-[#171717] text-white shadow-sm ring-1 ring-[#171717]"
+        : "bg-[#F6F2EC] text-[#5C534B] hover:text-[#171717] hover:bg-stone-200/70 border border-[#E5DDD3]"
+    }`;
+    const iconName = cat.icon || "local_dining";
+    btn.innerHTML = `
+      <span class="material-symbols-outlined text-[15px] ${isAct ? "text-amber-400" : "text-[#5C534B]"}">${escapeHtml(iconName)}</span>
+      <span>${escapeHtml(cat.name)}</span>
+      <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold ${
+        isAct ? "bg-white/20 text-white" : "bg-stone-200 text-[#5C534B]"
+      }">${count}</span>
+    `;
     btn.onclick = () => filterPosCategory(cat.name, btn);
     container.appendChild(btn);
   });
@@ -696,13 +725,27 @@ let activePosCategoryFilter = "all";
 
 function filterPosCategory(categoryName, btnEl) {
   activePosCategoryFilter = categoryName;
-  document.querySelectorAll(".cat-pill").forEach(b => {
-    b.className = "cat-pill p-2.5 rounded-xl text-left text-xs font-semibold flex items-center justify-between transition-all text-[#5C534B] hover:bg-[#F6F2EC]";
-  });
-  if (btnEl) {
-    btnEl.className = "cat-pill p-2.5 rounded-xl text-left text-xs font-bold flex items-center justify-between transition-all bg-[#171717] text-white";
-  }
+  renderPosCategories();
   renderPosItems();
+  const container = document.getElementById("pos-categories-list");
+  if (container) {
+    if (categoryName === "all") {
+      container.scrollTo({ left: 0, behavior: "smooth" });
+    } else {
+      const activeBtn = container.querySelector(".cat-pill.bg-\\[\\#171717\\]");
+      if (activeBtn) {
+        const cLeft = container.scrollLeft;
+        const cRight = cLeft + container.clientWidth;
+        const bLeft = activeBtn.offsetLeft;
+        const bRight = bLeft + activeBtn.offsetWidth;
+        if (bLeft < cLeft) {
+          container.scrollTo({ left: bLeft - 8, behavior: "smooth" });
+        } else if (bRight > cRight) {
+          container.scrollTo({ left: bRight - container.clientWidth + 8, behavior: "smooth" });
+        }
+      }
+    }
+  }
 }
 
 function renderPosItems() {
@@ -3874,7 +3917,26 @@ let currentInventorySubtab = "items";
 let selectedRecipeDishId = null;
 
 /**
- * Switches the active subtab in the Inventory view.
+ * Smoothly positions the sliding indicator behind the active inventory subtab.
+ */
+function updateInventorySubtabSlider(tabName) {
+  const container = document.getElementById("inv-subtab-container");
+  const slider = document.getElementById("inv-subtab-slider");
+  const activeBtn = document.getElementById(`subtab-inv-${tabName}`);
+  if (!container || !slider || !activeBtn) return;
+
+  const left = activeBtn.offsetLeft;
+  const width = activeBtn.offsetWidth;
+
+  if (width > 0) {
+    slider.style.opacity = "1";
+    slider.style.left = `${left}px`;
+    slider.style.width = `${width}px`;
+  }
+}
+
+/**
+ * Switches the active subtab in the Inventory view with smooth slider animation.
  */
 function switchInventorySubtab(tabName) {
   currentInventorySubtab = tabName || "items";
@@ -3883,22 +3945,42 @@ function switchInventorySubtab(tabName) {
   tabs.forEach(t => {
     const btn = document.getElementById(`subtab-inv-${t}`);
     const pane = document.getElementById(`inv-pane-${t}`);
+    const isAct = t === currentInventorySubtab;
 
     if (btn) {
-      if (t === currentInventorySubtab) {
-        btn.className = "inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#171717] text-white shadow-sm whitespace-nowrap";
+      const icon = btn.querySelector(".material-symbols-outlined");
+      if (isAct) {
+        btn.classList.add("text-white", "font-bold");
+        btn.classList.remove("text-[#5C534B]", "hover:text-[#171717]");
+        if (icon) {
+          icon.classList.add("text-amber-400");
+          icon.classList.remove("text-[#5C534B]");
+        }
       } else {
-        btn.className = "inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap";
+        btn.classList.remove("text-white", "font-bold");
+        btn.classList.add("text-[#5C534B]", "hover:text-[#171717]");
+        if (icon) {
+          icon.classList.remove("text-amber-400");
+          icon.classList.add("text-[#5C534B]");
+        }
       }
     }
 
     if (pane) {
-      if (t === currentInventorySubtab) {
+      if (isAct) {
         pane.classList.remove("hidden");
+        pane.classList.remove("animate-fade-in");
+        void pane.offsetWidth;
+        pane.classList.add("animate-fade-in");
       } else {
         pane.classList.add("hidden");
       }
     }
+  });
+
+  // Reposition animated sliding indicator
+  requestAnimationFrame(() => {
+    updateInventorySubtabSlider(currentInventorySubtab);
   });
 
   // Render content of active subtab
@@ -3927,6 +4009,7 @@ function renderInventoryView() {
 
   updateInventoryKPIs();
   switchInventorySubtab(currentInventorySubtab);
+  setTimeout(() => updateInventorySubtabSlider(currentInventorySubtab), 35);
 }
 
 /**
@@ -4989,3 +5072,10 @@ function exportInventoryCSVDownload() {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+// Window resize listener to keep sliding tabs and elements aligned
+window.addEventListener("resize", () => {
+  if (currentInventorySubtab && document.getElementById("view-inventory") && !document.getElementById("view-inventory").classList.contains("hidden")) {
+    updateInventorySubtabSlider(currentInventorySubtab);
+  }
+});
