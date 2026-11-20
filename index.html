@@ -45,7 +45,7 @@
   </script>
 
   <!-- Application Styles -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3.2.0">
 </head>
 <body class="bg-[#F6F2EC] text-[#171717] h-screen flex flex-col overflow-hidden select-none">
 
@@ -68,32 +68,34 @@
 
     <!-- Navigation Bar Pills -->
     <nav class="hidden lg:flex items-center gap-1 bg-[#F6F2EC] p-1 rounded-xl border border-[#E5DDD3]">
-      <button onclick="navigateTo('home')" id="nav-home" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">home</span> Home
+      <button onclick="navigateTo('home')" id="nav-home" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">home</span> <span>Home</span>
       </button>
-      <button onclick="navigateTo('pos')" id="nav-pos" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">point_of_sale</span> Billing POS
+      <button onclick="navigateTo('pos')" id="nav-pos" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">point_of_sale</span> <span>Billing POS</span>
       </button>
-      <button onclick="navigateTo('tables')" id="nav-tables" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">table_restaurant</span> Tables <span id="header-occupied-badge" class="ml-0.5 px-1.5 py-0.2 bg-[#6B4226] text-white text-[10px] rounded-full hidden">0</span>
+      <button onclick="navigateTo('tables')" id="nav-tables" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">table_restaurant</span> <span>Tables</span> <span id="header-occupied-badge" class="ml-0.5 px-1.5 py-0.2 bg-[#6B4226] text-white text-[10px] rounded-full hidden">0</span>
       </button>
-      <button onclick="openHeldOrdersModal()" id="nav-held" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">pause_circle</span> Held (<span id="header-held-count">0</span>)
+      <button onclick="openHeldOrdersModal()" id="nav-held" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0" title="Held Orders (F4)">
+        <span class="material-symbols-outlined text-[17px]">pause_circle</span>
+        <span>Held</span>
+        <span id="header-held-count" class="px-1.5 py-0.5 bg-stone-200 text-[#171717] text-[10px] font-bold rounded-full leading-none">0</span>
       </button>
-      <button onclick="navigateTo('history')" id="nav-history" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">receipt_long</span> History
+      <button onclick="navigateTo('history')" id="nav-history" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">receipt_long</span> <span>History</span>
       </button>
-      <button onclick="navigateTo('reports')" id="nav-reports" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">analytics</span> Reports
+      <button onclick="navigateTo('reports')" id="nav-reports" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">analytics</span> <span>Reports</span>
       </button>
-      <button onclick="navigateTo('crm')" id="nav-crm" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">contacts</span> CRM / Guests
+      <button onclick="navigateTo('crm')" id="nav-crm" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">contacts</span> <span>CRM / Guests</span>
       </button>
-      <button onclick="navigateTo('menu')" id="nav-menu" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">menu_book</span> Menu
+      <button onclick="navigateTo('menu')" id="nav-menu" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">menu_book</span> <span>Menu</span>
       </button>
-      <button onclick="navigateTo('settings')" id="nav-settings" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white">
-        <span class="material-symbols-outlined text-[17px]">settings</span> Settings
+      <button onclick="navigateTo('settings')" id="nav-settings" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">settings</span> <span>Settings</span>
       </button>
     </nav>
 
@@ -337,7 +339,7 @@
             </div>
 
             <!-- Customer Details Button -->
-            <button onclick="openCustomerInfoModal()" class="px-2.5 py-1.5 rounded-xl border border-[#E5DDD3] bg-white text-xs font-semibold text-[#5C534B] hover:text-[#171717] flex items-center gap-1" title="Customer Details">
+            <button id="pos-customer-btn" onclick="openCustomerInfoModal()" class="px-2.5 py-1.5 rounded-xl border border-[#E5DDD3] bg-white text-xs font-semibold text-[#5C534B] hover:text-[#171717] flex items-center gap-1 cursor-pointer transition-all active:scale-95" title="Customer Details">
               <span class="material-symbols-outlined text-[16px]">person</span>
               <span id="pos-customer-badge">Customer</span>
             </button>
@@ -1175,7 +1177,7 @@
     </div>
 
     <!-- MODAL 3B: CUSTOMER INFORMATION & CRM DIALOG -->
-    <div id="customer-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+    <div id="customer-modal" class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 hidden">
       <div class="bg-white rounded-2xl max-w-md w-full p-6 flex flex-col shadow-2xl">
         <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-3">
           <div class="flex items-center gap-2">
@@ -1417,7 +1419,7 @@
     </div>
 
     <!-- MODAL 8: PRODUCT ADD/EDIT MODAL -->
-    <div id="product-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+    <div id="product-modal" class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 hidden">
       <div class="bg-white rounded-2xl max-w-lg w-full p-6 flex flex-col shadow-2xl max-h-[92vh] overflow-y-auto">
         <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-3">
           <h3 class="text-base font-extrabold text-[#171717]" id="product-modal-title">Add New Product</h3>
@@ -1669,44 +1671,68 @@
       </div>
     </div>
 
-    <!-- MODAL 11: QUICK CRITICAL STOCK MANAGER -->
+    <!-- MODAL 11: PRODUCTS & LIVE STOCK MANAGER -->
     <div id="stock-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
-      <div class="bg-white rounded-2xl max-w-2xl w-full p-6 flex flex-col shadow-2xl max-h-[85vh] overflow-hidden">
+      <div class="bg-white rounded-2xl max-w-4xl w-full p-6 flex flex-col shadow-2xl max-h-[88vh] overflow-hidden">
         <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-3">
-          <div>
-            <h3 class="text-base font-extrabold text-[#171717] flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[20px] text-amber-700">inventory_2</span>
-              <span>Critical Stock Counter Manager</span>
-            </h3>
-            <p class="text-xs text-[#5C534B]">Real-time dish counters. Items automatically mark as SOLD OUT when stock reaches 0.</p>
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-200">
+              <span class="material-symbols-outlined text-[24px]">inventory_2</span>
+            </span>
+            <div>
+              <h3 class="text-base font-extrabold text-[#171717] flex items-center gap-2">
+                <span>Products & Stock Inventory</span>
+              </h3>
+              <p class="text-xs text-[#5C534B]">Add, remove, edit menu dishes, adjust portion prices & track real-time stock counters.</p>
+            </div>
           </div>
-          <button onclick="closeStockManagerModal()" class="p-1 rounded-lg hover:bg-[#F6F2EC] text-[#5C534B]">
-            <span class="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="openAddProductModal()" class="btn-primary !min-h-[36px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-[16px]">add</span>
+              <span>Add Product</span>
+            </button>
+            <button onclick="closeStockManagerModal()" class="w-8 h-8 rounded-lg hover:bg-[#F6F2EC] flex items-center justify-center text-[#5C534B]">
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
         </div>
 
-        <div class="my-3 flex items-center justify-between gap-2">
-          <span class="text-xs text-[#5C534B]" id="stock-modal-summary">Tracking 0 items</span>
-          <div class="flex gap-1.5">
-            <button onclick="refillAllStock(10)" class="px-2.5 py-1 bg-[#F6F2EC] hover:bg-[#E5DDD3] rounded-lg text-xs font-bold text-[#171717]">
-              +10 All Items
-            </button>
-            <button onclick="refillAllStock(25)" class="px-2.5 py-1 bg-[#171717] text-white rounded-lg text-xs font-bold hover:bg-stone-800">
-              Refill All (+25)
-            </button>
+        <div class="my-3 flex flex-wrap items-center justify-between gap-3 bg-[#FCFAF8] p-2.5 rounded-xl border border-[#E5DDD3]">
+          <div class="flex items-center gap-2 flex-1 min-w-[280px]">
+            <div class="relative flex-1">
+              <span class="material-symbols-outlined absolute left-2.5 top-2 text-[#5C534B] text-[18px]">search</span>
+              <input type="text" id="stock-search-input" oninput="renderStockTable()" placeholder="Search product name or code..."
+                class="w-full pl-8 pr-3 py-1.5 bg-white border border-[#E5DDD3] rounded-lg text-xs font-semibold focus:outline-none focus:border-[#C82026]">
+            </div>
+            <select id="stock-filter-mode" onchange="renderStockTable()" class="py-1.5 px-2.5 bg-white border border-[#E5DDD3] rounded-lg text-xs font-bold text-[#5C534B] focus:outline-none">
+              <option value="all">All Products</option>
+              <option value="low">Low / Out of Stock</option>
+              <option value="tracked">Tracked Only</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-[#5C534B] font-semibold" id="stock-modal-summary">Showing 0 products</span>
+            <div class="flex gap-1">
+              <button onclick="refillAllStock(10)" class="px-2 py-1 bg-white hover:bg-[#F6F2EC] border border-[#E5DDD3] rounded-lg text-[11px] font-bold text-[#171717]" title="Add +10 stock to tracked items">
+                +10 Refill
+              </button>
+              <button onclick="refillAllStock(25)" class="px-2.5 py-1 bg-[#171717] text-white rounded-lg text-[11px] font-bold hover:bg-stone-800" title="Add +25 stock to tracked items">
+                +25 Refill All
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="flex-1 overflow-y-auto border border-[#E5DDD3] rounded-xl">
           <table class="w-full text-left border-collapse text-xs">
-            <thead class="bg-[#FCFAF8] text-[#5C534B] uppercase font-bold sticky top-0 border-b border-[#E5DDD3]">
+            <thead class="bg-[#FCFAF8] text-[#5C534B] uppercase font-bold sticky top-0 border-b border-[#E5DDD3] z-10">
               <tr>
-                <th class="p-2.5 pl-3">Dish</th>
+                <th class="p-2.5 pl-3">Dish / Item</th>
                 <th class="p-2.5">Category</th>
-                <th class="p-2.5 text-center">Current Qty</th>
-                <th class="p-2.5 text-center">Alert At</th>
+                <th class="p-2.5">Price</th>
+                <th class="p-2.5 text-center">Stock Count</th>
                 <th class="p-2.5 text-center">Status</th>
-                <th class="p-2.5 pr-3 text-right">Quick Refill</th>
+                <th class="p-2.5 pr-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody id="stock-table-body" class="divide-y divide-[#F6F2EC]">
@@ -1715,7 +1741,8 @@
           </table>
         </div>
 
-        <div class="mt-4 pt-3 border-t border-[#E5DDD3] flex justify-end gap-2">
+        <div class="mt-4 pt-3 border-t border-[#E5DDD3] flex justify-between items-center">
+          <span class="text-[11px] text-[#5C534B]">Tip: Edit dishes to add portion sizes, add-ons, or custom low-stock thresholds.</span>
           <button onclick="closeStockManagerModal()" class="btn-primary !min-h-[38px] !text-xs px-5">Done</button>
         </div>
       </div>
@@ -1778,6 +1805,6 @@
   <script src="src/core/escpos.js"></script>
   <script src="src/core/qr.js"></script>
   <script src="src/data/defaultCatalog.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=3.2.0"></script>
 </body>
 </html>

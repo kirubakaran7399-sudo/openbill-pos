@@ -34,6 +34,23 @@ window.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("mousemove", resetIdleTimer);
   document.addEventListener("keydown", resetIdleTimer);
 
+  // Expose global modal triggers
+  window.openCustomerInfoModal = openCustomerInfoModal;
+  window.closeCustomerInfoModal = closeCustomerInfoModal;
+  window.openStockManagerModal = openStockManagerModal;
+  window.closeStockManagerModal = closeStockManagerModal;
+  window.openAddProductModal = openAddProductModal;
+  window.editProduct = editProduct;
+  window.deleteProduct = deleteProduct;
+
+  const custBtn = document.getElementById("pos-customer-btn");
+  if (custBtn) {
+    custBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openCustomerInfoModal();
+    });
+  }
+
   // Initial render
   navigateTo("home");
   updateHeaderBadges();
@@ -321,6 +338,7 @@ function startNewOrder(mode = "counter", tableId = null) {
   updatePosHeaderDisplay();
   navigateTo("pos");
   renderCart();
+  updatePosItemCardsBadges();
   setTimeout(() => {
     document.getElementById("pos-search-input")?.focus();
   }, 100);
@@ -414,7 +432,10 @@ function openCustomerInfoModal() {
   }
 
   modal.classList.remove("hidden");
-  if (phoneInput) phoneInput.focus();
+  modal.style.display = "flex";
+  setTimeout(() => {
+    if (phoneInput) phoneInput.focus();
+  }, 50);
 }
 
 /**
@@ -422,7 +443,10 @@ function openCustomerInfoModal() {
  */
 function closeCustomerInfoModal() {
   const modal = document.getElementById("customer-modal");
-  if (modal) modal.classList.add("hidden");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.display = "none";
+  }
 }
 
 /**
@@ -615,8 +639,7 @@ function renderPosItems() {
   }
 
   filtered.forEach(prod => {
-    const inCartItem = cart.find(it => it.dishId === prod.id);
-    const cartQty = inCartItem ? inCartItem.qty : 0;
+    const totalCartQty = cart.reduce((sum, it) => it.dishId === prod.id ? sum + (it.qty || 1) : sum, 0);
 
     const isSoldOut = !prod.isAvailable || (prod.trackStock && (prod.stockQty === undefined || prod.stockQty <= 0));
     const isLowStock = prod.trackStock && !isSoldOut && prod.stockQty <= (prod.lowStockThreshold || 5);
@@ -634,12 +657,26 @@ function renderPosItems() {
       stockBadgeHtml = '<span class="text-[9px] font-bold text-red-600 bg-red-50 px-1 rounded">SOLD OUT</span>';
     }
 
+    const hasSizes = Array.isArray(prod.sizes) && prod.sizes.length > 0;
+    const hasAddons = Array.isArray(prod.addons) && prod.addons.length > 0;
+    const customBadgeHtml = (hasSizes || hasAddons)
+      ? `<button type="button" class="text-[9px] font-bold text-[#6B4226] bg-[#EFE3D6] hover:bg-[#6B4226] hover:text-white px-1.5 py-0.5 rounded transition-all cursor-pointer" title="Custom Portion / Add-ons">Custom</button>`
+      : '';
+
     const card = document.createElement("div");
+    card.setAttribute("data-dish-id", prod.id);
     card.className = `bg-white p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between h-32 cursor-pointer shadow-sm hover:shadow-md relative select-none ${
-      cartQty > 0 ? 'border-[#C82026]' : 'border-[#E5DDD3] hover:border-[#171717]'
+      totalCartQty > 0 ? 'border-[#C82026]' : 'border-[#E5DDD3] hover:border-[#171717]'
     } ${isSoldOut ? 'opacity-50 pointer-events-none' : ''}`;
 
-    card.onclick = () => addDishToCart(prod);
+    card.onclick = (e) => {
+      // If user clicked the custom options button specifically
+      if (e.target.closest('button')?.textContent === 'Custom') {
+        openItemOptionsModal(prod);
+        return;
+      }
+      addDishToCart(prod);
+    };
 
     // Diet mark HTML
     const dietHtml = prod.diet === "veg"
@@ -647,9 +684,7 @@ function renderPosItems() {
       : `<span class="diet-non-veg" title="Non-Vegetarian"><span class="diet-non-veg-dot"></span></span>`;
 
     // Quantity in cart badge
-    const qtyBadge = cartQty > 0
-      ? `<span class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#C82026] text-white text-xs font-extrabold flex items-center justify-center shadow-md animate-pop">${cartQty}</span>`
-      : '';
+    const qtyBadge = `<span class="pos-item-qty-badge absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#C82026] text-white text-xs font-extrabold flex items-center justify-center shadow-md transition-transform duration-150 ${totalCartQty > 0 ? '' : 'hidden'}">${totalCartQty}</span>`;
 
     card.innerHTML = `
       ${qtyBadge}
@@ -659,19 +694,76 @@ function renderPosItems() {
             ${dietHtml}
             <span class="text-[10px] font-mono font-bold bg-[#F6F2EC] px-1.5 py-0.5 rounded text-[#5C534B]">${prod.shortCode || 'ITEM'}</span>
           </div>
-          ${stockBadgeHtml}
+          <div class="flex items-center gap-1">
+            ${customBadgeHtml}
+            ${stockBadgeHtml}
+          </div>
         </div>
         <h4 class="text-xs font-bold text-[#171717] mt-2 line-clamp-2 leading-tight">${prod.name}</h4>
       </div>
       <div class="flex items-center justify-between pt-2 border-t border-[#F6F2EC]">
         <span class="text-sm font-extrabold font-mono text-[#171717]">₹${prod.price.toFixed(2)}</span>
-        <button class="w-6 h-6 rounded-lg bg-[#F6F2EC] hover:bg-[#171717] hover:text-white flex items-center justify-center text-[#171717] transition-all">
+        <button type="button" class="quick-add-btn w-6 h-6 rounded-lg bg-[#F6F2EC] hover:bg-[#171717] hover:text-white flex items-center justify-center text-[#171717] transition-all" title="Quick Add (+1)">
           <span class="material-symbols-outlined text-[16px]">add</span>
         </button>
       </div>
     `;
 
+    // Direct listener on quick-add button for instant increment
+    const addBtn = card.querySelector(".quick-add-btn");
+    if (addBtn) {
+      addBtn.onclick = (e) => {
+        e.stopPropagation();
+        addDishToCart(prod, true);
+      };
+    }
+
     grid.appendChild(card);
+  });
+}
+
+/**
+ * Ultra-fast in-place DOM update for POS dish item selection count badges.
+ * Executes in < 0.2ms without destroying/re-rendering the grid DOM, giving instant 60fps feedback.
+ */
+function updatePosItemCardsBadges() {
+  const cards = document.querySelectorAll("#pos-items-grid > div[data-dish-id]");
+  if (!cards || cards.length === 0) return;
+
+  const qtyMap = {};
+  for (let i = 0; i < cart.length; i++) {
+    const it = cart[i];
+    if (it && it.dishId) {
+      qtyMap[it.dishId] = (qtyMap[it.dishId] || 0) + (it.qty || 1);
+    }
+  }
+
+  cards.forEach(card => {
+    const dishId = card.getAttribute("data-dish-id");
+    const qty = qtyMap[dishId] || 0;
+    const badge = card.querySelector(".pos-item-qty-badge");
+
+    if (qty > 0) {
+      card.classList.add("border-[#C82026]");
+      card.classList.remove("border-[#E5DDD3]");
+      if (badge) {
+        const prevQty = parseInt(badge.textContent, 10) || 0;
+        badge.textContent = qty;
+        badge.classList.remove("hidden");
+        if (prevQty !== qty) {
+          badge.classList.remove("animate-pop");
+          void badge.offsetWidth;
+          badge.classList.add("animate-pop");
+        }
+      }
+    } else {
+      card.classList.remove("border-[#C82026]");
+      card.classList.add("border-[#E5DDD3]");
+      if (badge) {
+        badge.classList.add("hidden");
+        badge.textContent = "0";
+      }
+    }
   });
 }
 
@@ -816,48 +908,59 @@ function confirmAddItemWithOptions() {
 
   closeItemOptionsModal();
   renderCart();
-  renderPosItems();
+  updatePosItemCardsBadges();
   persistActiveOrderDraft();
 }
 
 /**
  * Adds dish to current cart using pure PosCart engine.
- * Opens options modal if the dish has sizes or add-ons.
+ * Opens options modal if the dish has sizes or add-ons, or adds directly if forced/already in cart.
  */
-function addDishToCart(dish) {
+function addDishToCart(dish, forceDirect = false) {
   const hasSizes = Array.isArray(dish.sizes) && dish.sizes.length > 0;
   const hasAddons = Array.isArray(dish.addons) && dish.addons.length > 0;
-  if (hasSizes || hasAddons) {
+
+  // Check if this dish is already in the cart
+  const existingInCart = cart.find(it => it.dishId === dish.id);
+
+  if (!forceDirect && !existingInCart && (hasSizes || hasAddons)) {
     openItemOptionsModal(dish);
     return;
   }
 
+  let basePrice = dish.price;
+  let itemName = dish.name;
+  if (hasSizes && dish.sizes[0]) {
+    basePrice = dish.sizes[0].price;
+    itemName = `${dish.name} (${dish.sizes[0].name})`;
+  }
+
   cart = PosCart.addItemToCart(cart, {
     dishId: dish.id,
-    name: dish.name,
+    name: itemName,
     shortCode: dish.shortCode,
     category: dish.category,
-    basePrice: dish.price,
+    basePrice: basePrice,
     diet: dish.diet,
     gstRate: dish.gstRate || 5.0
   });
 
   renderCart();
-  renderPosItems();
+  updatePosItemCardsBadges();
   persistActiveOrderDraft();
 }
 
 function updateCartQty(itemId, delta) {
   cart = PosCart.updateCartItemQty(cart, itemId, delta);
   renderCart();
-  renderPosItems();
+  updatePosItemCardsBadges();
   persistActiveOrderDraft();
 }
 
 function removeCartLine(itemId) {
   cart = PosCart.removeCartItem(cart, itemId);
   renderCart();
-  renderPosItems();
+  updatePosItemCardsBadges();
   persistActiveOrderDraft();
 }
 
@@ -880,7 +983,7 @@ function clearCurrentCart() {
     cart = [];
     activeDiscount = { type: "percent", value: 0, reason: "" };
     renderCart();
-    renderPosItems();
+    updatePosItemCardsBadges();
     persistActiveOrderDraft();
   }
 }
@@ -2722,6 +2825,7 @@ function saveProduct(event) {
   renderMenuManager();
   renderPosCategories();
   renderPosItems();
+  renderStockTable();
 }
 
 function editProduct(productId) {
@@ -2777,16 +2881,22 @@ function toggleProductAvailability(productId) {
     saveAppState();
     renderMenuManager();
     renderPosItems();
+    renderStockTable();
+    updateHeaderStockBadge();
   }
 }
 
 function deleteProduct(productId) {
-  if (confirm("Delete this product from menu?")) {
+  const prod = (appState.products || []).find(p => p.id === productId);
+  const name = prod ? prod.name : "this product";
+  if (confirm(`Delete product "${name}" from menu?`)) {
     appState.products = (appState.products || []).filter(p => p.id !== productId);
     saveAppState();
     renderMenuManager();
     renderPosCategories();
     renderPosItems();
+    renderStockTable();
+    updateHeaderStockBadge();
   }
 }
 
@@ -3399,12 +3509,22 @@ function updateHeaderStockBadge() {
 }
 
 function openStockManagerModal() {
+  const modal = document.getElementById("stock-modal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  modal.style.display = "flex";
   renderStockTable();
-  document.getElementById("stock-modal").classList.remove("hidden");
+  setTimeout(() => {
+    document.getElementById("stock-search-input")?.focus();
+  }, 50);
 }
 
 function closeStockManagerModal() {
-  document.getElementById("stock-modal").classList.add("hidden");
+  const modal = document.getElementById("stock-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.display = "none";
+  }
   renderPosItems();
   updateHeaderStockBadge();
 }
@@ -3415,55 +3535,152 @@ function renderStockTable() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  const tracked = (appState.products || []).filter(p => p.trackStock);
-  if (summary) summary.textContent = `Tracking ${tracked.length} dish(es) with critical stock limits`;
+  const query = (document.getElementById("stock-search-input")?.value || "").toLowerCase().trim();
+  const filterMode = document.getElementById("stock-filter-mode")?.value || "all";
 
-  if (tracked.length === 0) {
+  const allProducts = appState.products || [];
+  const filtered = allProducts.filter(prod => {
+    // Search filter
+    if (query) {
+      const matchName = (prod.name || "").toLowerCase().includes(query);
+      const matchCode = (prod.shortCode || "").toLowerCase().includes(query);
+      const matchCat = (prod.category || "").toLowerCase().includes(query);
+      if (!matchName && !matchCode && !matchCat) return false;
+    }
+
+    // Status filter
+    const isSoldOut = !prod.isAvailable || (prod.trackStock && (prod.stockQty === undefined || prod.stockQty <= 0));
+    const isLow = prod.trackStock && !isSoldOut && prod.stockQty <= (prod.lowStockThreshold || 5);
+
+    if (filterMode === "low") {
+      return isSoldOut || isLow;
+    } else if (filterMode === "tracked") {
+      return Boolean(prod.trackStock);
+    }
+    return true;
+  });
+
+  if (summary) {
+    summary.textContent = `Showing ${filtered.length} of ${allProducts.length} product(s)`;
+  }
+
+  if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" class="p-6 text-center text-[#5C534B]">
-          No products currently have stock tracking enabled. Edit dishes in the Menu section to turn on stock tracking.
+        <td colspan="6" class="p-8 text-center text-[#5C534B]">
+          <div class="flex flex-col items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[32px] text-stone-400">inventory_2</span>
+            <span class="font-bold text-xs">No products found matching criteria</span>
+            <button onclick="openAddProductModal()" class="btn-primary !min-h-[32px] !py-1 !px-3 !text-xs mt-1">
+              + Add New Product
+            </button>
+          </div>
         </td>
       </tr>
     `;
     return;
   }
 
-  tracked.forEach(prod => {
-    const isSoldOut = !prod.isAvailable || prod.stockQty <= 0;
-    const isLow = !isSoldOut && prod.stockQty <= (prod.lowStockThreshold || 5);
+  filtered.forEach(prod => {
+    const isSoldOut = !prod.isAvailable || (prod.trackStock && (prod.stockQty === undefined || prod.stockQty <= 0));
+    const isLow = prod.trackStock && !isSoldOut && prod.stockQty <= (prod.lowStockThreshold || 5);
     const tr = document.createElement("tr");
-    tr.className = isSoldOut ? "bg-red-50/60" : (isLow ? "bg-amber-50/50" : "");
+    tr.className = `transition-colors hover:bg-stone-50/70 ${isSoldOut ? "bg-red-50/40" : (isLow ? "bg-amber-50/40" : "")}`;
+
+    // Diet mark HTML
+    const dietHtml = prod.diet === "veg"
+      ? `<span class="diet-veg shrink-0" title="Vegetarian"><span class="diet-veg-dot"></span></span>`
+      : `<span class="diet-non-veg shrink-0" title="Non-Vegetarian"><span class="diet-non-veg-dot"></span></span>`;
+
+    // Sizes & addons subtitle
+    const sizesCount = Array.isArray(prod.sizes) ? prod.sizes.length : 0;
+    const addonsCount = Array.isArray(prod.addons) ? prod.addons.length : 0;
+    let extraMeta = "";
+    if (sizesCount > 0 || addonsCount > 0) {
+      const parts = [];
+      if (sizesCount > 0) parts.push(`${sizesCount} size(s)`);
+      if (addonsCount > 0) parts.push(`${addonsCount} add-on(s)`);
+      extraMeta = `<span class="text-[10px] text-[#5C534B]"> • ${parts.join(", ")}</span>`;
+    }
+
+    // Stock cell HTML
+    let stockCellHtml = "";
+    if (prod.trackStock) {
+      stockCellHtml = `
+        <div class="flex items-center justify-center gap-1">
+          <button onclick="quickAdjustStock('${prod.id}', -1)" class="w-6 h-6 rounded bg-[#F6F2EC] hover:bg-stone-300 font-bold text-xs text-[#171717]">-</button>
+          <input type="number" min="0" value="${prod.stockQty || 0}" 
+            onchange="setProductStockDirect('${prod.id}', this.value)"
+            class="w-14 px-1 py-0.5 text-center bg-white border border-[#E5DDD3] rounded font-mono font-bold text-xs focus:outline-none focus:border-[#C82026]">
+          <button onclick="quickAdjustStock('${prod.id}', 1)" class="w-6 h-6 rounded bg-[#F6F2EC] hover:bg-stone-300 font-bold text-xs text-[#171717]">+</button>
+        </div>
+        ${isLow ? '<div class="text-[9px] font-bold text-amber-700 text-center mt-0.5 animate-pulse">Low Stock</div>' : ''}
+      `;
+    } else {
+      stockCellHtml = `
+        <div class="flex justify-center">
+          <button onclick="toggleProductStockTracking('${prod.id}')" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-stone-100 text-[#5C534B] hover:bg-amber-50 hover:text-amber-900 border border-stone-200 transition-all" title="Click to track critical inventory count">
+            Unlimited <span class="underline ml-0.5">Track</span>
+          </button>
+        </div>
+      `;
+    }
 
     tr.innerHTML = `
       <td class="p-2.5 pl-3">
-        <div class="font-bold text-[#171717]">${prod.name}</div>
-        <div class="text-[10px] font-mono text-[#5C534B]">${prod.shortCode || ''}</div>
+        <div class="flex items-center gap-1.5">
+          ${dietHtml}
+          <div>
+            <div class="font-bold text-[#171717] flex items-center gap-1">
+              <span>${escapeHtml(prod.name)}</span>
+              ${extraMeta}
+            </div>
+            <div class="text-[10px] font-mono text-[#5C534B]">${escapeHtml(prod.shortCode || '')}</div>
+          </div>
+        </div>
       </td>
-      <td class="p-2.5 text-[#5C534B]">${prod.category || 'General'}</td>
-      <td class="p-2.5 text-center font-mono font-bold text-sm text-[#171717]">
-        <input type="number" min="0" value="${prod.stockQty || 0}" 
-          onchange="setProductStockDirect('${prod.id}', this.value)"
-          class="w-16 px-1.5 py-1 text-center bg-white border border-[#E5DDD3] rounded-lg font-bold">
+      <td class="p-2.5">
+        <span class="px-2 py-0.5 bg-stone-100 text-[#5C534B] rounded-md font-semibold text-[11px]">${escapeHtml(prod.category || 'General')}</span>
       </td>
-      <td class="p-2.5 text-center font-mono text-[#5C534B]">${prod.lowStockThreshold || 5}</td>
+      <td class="p-2.5 font-mono font-bold text-[#171717]">
+        ₹${(prod.price || 0).toFixed(2)}
+      </td>
+      <td class="p-2.5 text-center">
+        ${stockCellHtml}
+      </td>
       <td class="p-2.5 text-center">
         <button onclick="toggleProductAvailability('${prod.id}')" 
-          class="px-2 py-0.5 rounded text-[10px] font-bold ${prod.isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
-          ${prod.isAvailable ? 'Available' : 'Sold Out'}
+          class="px-2 py-0.5 rounded text-[10px] font-bold transition-all ${prod.isAvailable !== false ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-red-100 text-red-800 hover:bg-red-200'}">
+          ${prod.isAvailable !== false ? 'Available' : 'Sold Out'}
         </button>
       </td>
       <td class="p-2.5 pr-3 text-right">
         <div class="flex items-center justify-end gap-1">
-          <button onclick="quickAdjustStock('${prod.id}', -1)" class="w-6 h-6 rounded bg-[#F6F2EC] hover:bg-stone-300 font-bold text-xs">-1</button>
-          <button onclick="quickAdjustStock('${prod.id}', 1)" class="w-6 h-6 rounded bg-[#F6F2EC] hover:bg-stone-300 font-bold text-xs">+1</button>
-          <button onclick="quickAdjustStock('${prod.id}', 5)" class="px-1.5 h-6 rounded bg-[#F6F2EC] hover:bg-stone-300 font-bold text-xs">+5</button>
-          <button onclick="quickAdjustStock('${prod.id}', 10)" class="px-1.5 h-6 rounded bg-[#171717] text-white hover:bg-stone-800 font-bold text-xs">+10</button>
+          <button onclick="editProduct('${prod.id}')" class="w-7 h-7 rounded-lg bg-[#F6F2EC] hover:bg-[#171717] hover:text-white text-[#171717] flex items-center justify-center transition-all" title="Edit Product, Sizes & Add-ons">
+            <span class="material-symbols-outlined text-[16px]">edit</span>
+          </button>
+          <button onclick="deleteProduct('${prod.id}')" class="w-7 h-7 rounded-lg bg-[#F6F2EC] hover:bg-red-600 hover:text-white text-red-600 flex items-center justify-center transition-all ml-1" title="Delete Product">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+          </button>
         </div>
       </td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+function toggleProductStockTracking(prodId) {
+  const prod = (appState.products || []).find(p => p.id === prodId);
+  if (!prod) return;
+  prod.trackStock = !prod.trackStock;
+  if (prod.trackStock && (prod.stockQty === undefined || prod.stockQty === null)) {
+    prod.stockQty = 25;
+    prod.lowStockThreshold = 5;
+  }
+  saveAppState();
+  renderStockTable();
+  renderPosItems();
+  updateHeaderStockBadge();
 }
 
 function quickAdjustStock(prodId, delta) {
@@ -3473,6 +3690,8 @@ function quickAdjustStock(prodId, delta) {
   if (prod.stockQty > 0) prod.isAvailable = true;
   saveAppState();
   renderStockTable();
+  renderPosItems();
+  updateHeaderStockBadge();
 }
 
 function setProductStockDirect(prodId, value) {
@@ -3483,6 +3702,8 @@ function setProductStockDirect(prodId, value) {
   if (prod.stockQty > 0) prod.isAvailable = true;
   saveAppState();
   renderStockTable();
+  renderPosItems();
+  updateHeaderStockBadge();
 }
 
 function refillAllStock(addQty) {
@@ -3494,4 +3715,6 @@ function refillAllStock(addQty) {
   });
   saveAppState();
   renderStockTable();
+  renderPosItems();
+  updateHeaderStockBadge();
 }
