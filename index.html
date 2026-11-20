@@ -66,42 +66,11 @@
       </div>
     </div>
 
-    <!-- Navigation Bar Pills -->
-    <nav class="hidden lg:flex items-center gap-1 bg-[#F6F2EC] p-1 rounded-xl border border-[#E5DDD3]">
-      <button onclick="navigateTo('home')" id="nav-home" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">home</span> <span>Home</span>
-      </button>
-      <button onclick="navigateTo('pos')" id="nav-pos" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">point_of_sale</span> <span>Billing POS</span>
-      </button>
-      <button onclick="navigateTo('tables')" id="nav-tables" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">table_restaurant</span> <span>Tables</span> <span id="header-occupied-badge" class="ml-0.5 px-1.5 py-0.2 bg-[#6B4226] text-white text-[10px] rounded-full hidden">0</span>
-      </button>
-      <button onclick="openHeldOrdersModal()" id="nav-held" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0" title="Held Orders (F4)">
-        <span class="material-symbols-outlined text-[17px]">pause_circle</span>
-        <span>Held</span>
-        <span id="header-held-count" class="px-1.5 py-0.5 bg-stone-200 text-[#171717] text-[10px] font-bold rounded-full leading-none">0</span>
-      </button>
-      <button onclick="navigateTo('history')" id="nav-history" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">receipt_long</span> <span>History</span>
-      </button>
-      <button onclick="navigateTo('reports')" id="nav-reports" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">analytics</span> <span>Reports</span>
-      </button>
-      <button onclick="navigateTo('crm')" id="nav-crm" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">contacts</span> <span>CRM / Guests</span>
-      </button>
-      <button onclick="navigateTo('menu')" id="nav-menu" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">menu_book</span> <span>Menu</span>
-      </button>
-      <button onclick="navigateTo('inventory')" id="nav-inventory" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">inventory_2</span> <span>Inventory</span>
-        <span id="header-inventory-alert-badge" class="ml-0.5 px-1.5 py-0.2 bg-amber-600 text-white text-[10px] rounded-full hidden">0</span>
-      </button>
-      <button onclick="navigateTo('settings')" id="nav-settings" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
-        <span class="material-symbols-outlined text-[17px]">settings</span> <span>Settings</span>
-      </button>
-    </nav>
+    <!-- Center: Active View Title Pill -->
+    <div id="header-center-info" class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#F6F2EC] rounded-xl border border-[#E5DDD3] shadow-inner select-none">
+      <span class="material-symbols-outlined text-[18px] text-[#C82026]" id="header-active-icon">home</span>
+      <span id="header-active-title" class="text-xs font-extrabold text-[#171717] tracking-wide">Home Dashboard</span>
+    </div>
 
     <!-- Header Right Controls -->
     <div class="flex items-center gap-3">
@@ -141,8 +110,129 @@
     </div>
   </header>
 
-  <!-- MAIN VIEWPORT CONTAINER -->
-  <main id="main-viewport" class="flex-1 flex overflow-hidden relative">
+  <!-- APP BODY CONTAINER (LEFT SIDEBAR + MAIN VIEWPORT) -->
+  <div id="app-body" class="flex-1 flex overflow-hidden">
+
+    <!-- LEFT SIDEBAR: VERTICAL NAVIGATION COLUMN (UP TO DOWN) -->
+    <aside id="app-sidebar" class="w-56 bg-white border-r border-[#E5DDD3] flex flex-col justify-between shrink-0 z-20 shadow-sm select-none transition-all duration-200">
+      
+      <!-- Top Section: Navigation Links Column -->
+      <div class="flex flex-col gap-1.5 p-2 overflow-y-auto">
+        <div class="px-2.5 py-1.5 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-[#5C534B]">
+          <span class="nav-label sidebar-header-title">Navigation</span>
+          <button type="button" onclick="toggleSidebar()" class="w-6 h-6 rounded-lg hover:bg-[#F6F2EC] flex items-center justify-center text-stone-400 hover:text-[#171717] transition-colors" title="Collapse / Expand Sidebar">
+            <span class="material-symbols-outlined text-[17px]" id="sidebar-toggle-icon">chevron_left</span>
+          </button>
+        </div>
+
+        <nav id="app-nav-column" class="flex flex-col gap-1">
+          <!-- 1. Home -->
+          <button onclick="navigateTo('home')" id="nav-home" class="nav-btn active w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group bg-[#171717] text-white shadow-sm" title="Home (F1)">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0 text-white">home</span>
+              <span class="nav-label font-bold truncate">Home</span>
+            </div>
+            <span class="nav-shortcut text-[10px] font-mono text-stone-400 group-hover:text-stone-300">F1</span>
+          </button>
+
+          <!-- 2. Billing POS -->
+          <button onclick="navigateTo('pos')" id="nav-pos" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="Billing POS Register">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">point_of_sale</span>
+              <span class="nav-label font-bold truncate">Billing POS</span>
+            </div>
+            <span class="nav-shortcut text-[10px] font-mono text-stone-400">POS</span>
+          </button>
+
+          <!-- 3. Tables -->
+          <button onclick="navigateTo('tables')" id="nav-tables" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="Floor Tables (F2)">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">table_restaurant</span>
+              <span class="nav-label font-bold truncate">Tables</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span id="header-occupied-badge" class="px-1.5 py-0.2 bg-[#6B4226] text-white text-[10px] font-bold rounded-full hidden">0</span>
+              <span class="nav-shortcut text-[10px] font-mono text-stone-400">F2</span>
+            </div>
+          </button>
+
+          <!-- 4. Held Orders -->
+          <button onclick="openHeldOrdersModal()" id="nav-held" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="Held Orders (F4)">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">pause_circle</span>
+              <span class="nav-label font-bold truncate">Held</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span id="header-held-count" class="px-1.5 py-0.5 bg-stone-200 text-[#171717] text-[10px] font-bold rounded-full leading-none">0</span>
+              <span class="nav-shortcut text-[10px] font-mono text-stone-400">F4</span>
+            </div>
+          </button>
+
+          <!-- 5. History -->
+          <button onclick="navigateTo('history')" id="nav-history" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="Tax Invoices History">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">receipt_long</span>
+              <span class="nav-label font-bold truncate">History</span>
+            </div>
+          </button>
+
+          <!-- 6. Reports -->
+          <button onclick="navigateTo('reports')" id="nav-reports" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="Sales & Z-Report">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">analytics</span>
+              <span class="nav-label font-bold truncate">Reports</span>
+            </div>
+          </button>
+
+          <!-- 7. CRM / Guests -->
+          <button onclick="navigateTo('crm')" id="nav-crm" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="CRM & Customer Directory">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">contacts</span>
+              <span class="nav-label font-bold truncate">CRM / Guests</span>
+            </div>
+          </button>
+
+          <!-- 8. Menu Catalog -->
+          <button onclick="navigateTo('menu')" id="nav-menu" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="Menu & Pricing Manager">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">menu_book</span>
+              <span class="nav-label font-bold truncate">Menu</span>
+            </div>
+          </button>
+
+          <!-- 9. Inventory -->
+          <button onclick="navigateTo('inventory')" id="nav-inventory" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="Raw Materials & Recipe BOM">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">inventory_2</span>
+              <span class="nav-label font-bold truncate">Inventory</span>
+            </div>
+            <span id="header-inventory-alert-badge" class="px-1.5 py-0.2 bg-amber-600 text-white text-[10px] font-bold rounded-full hidden">0</span>
+          </button>
+
+          <!-- 10. Settings -->
+          <button onclick="navigateTo('settings')" id="nav-settings" class="nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group text-[#5C534B] hover:text-[#171717] hover:bg-[#F6F2EC]" title="Store & Terminal Settings">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined nav-icon text-[20px] shrink-0">settings</span>
+              <span class="nav-label font-bold truncate">Settings</span>
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Bottom Sidebar Status Widget -->
+      <div class="p-2.5 border-t border-[#F6F2EC] flex flex-col gap-2">
+        <div class="sidebar-footer-text p-2 rounded-xl bg-[#FCFAF8] border border-[#E5DDD3] flex items-center justify-between text-[11px]">
+          <div class="flex items-center gap-1.5 text-emerald-700 font-bold">
+            <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+            <span>Local DB Ready</span>
+          </div>
+          <span class="text-stone-400 font-mono text-[10px]">v3.3.0</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEWPORT CONTAINER -->
+    <main id="main-viewport" class="flex-1 flex overflow-hidden relative">
 
     <!-- VIEW 1: HOME LAUNCHER (Spec §7.2) -->
     <section id="view-home" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-6 max-w-7xl mx-auto">
@@ -2350,6 +2440,7 @@
     </div>
 
   </main>
+  </div> <!-- End #app-body -->
 
   <!-- PRINTABLE HIDDEN SECTION FOR PHYSICAL THERMAL PRINTING -->
   <div id="printable-area" class="hidden">

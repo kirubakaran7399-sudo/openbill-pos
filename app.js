@@ -70,6 +70,7 @@ window.addEventListener("DOMContentLoaded", () => {
   window.onAuditItemSelected = onAuditItemSelected;
   window.calculateAuditVariancePreview = calculateAuditVariancePreview;
   window.submitStockReconciliation = submitStockReconciliation;
+  window.toggleSidebar = toggleSidebar;
 
   const custBtn = document.getElementById("pos-customer-btn");
   if (custBtn) {
@@ -286,12 +287,36 @@ function doNavigate(viewName) {
 
   // Update navigation button active state
   document.querySelectorAll(".nav-btn").forEach(btn => {
-    btn.classList.remove("bg-white", "shadow-sm", "border", "border-[#E5DDD3]");
+    btn.classList.remove("active", "bg-[#171717]", "text-white", "shadow-sm");
+    btn.classList.add("text-[#5C534B]");
+    const icon = btn.querySelector(".nav-icon");
+    if (icon) icon.classList.remove("text-white");
   });
   const activeBtn = document.getElementById(`nav-${viewName}`);
   if (activeBtn) {
-    activeBtn.classList.add("bg-white", "shadow-sm", "border", "border-[#E5DDD3]");
+    activeBtn.classList.remove("text-[#5C534B]");
+    activeBtn.classList.add("active", "bg-[#171717]", "text-white", "shadow-sm");
+    const icon = activeBtn.querySelector(".nav-icon");
+    if (icon) icon.classList.add("text-white");
   }
+
+  // Update top header active title and icon
+  const viewTitles = {
+    home: { title: "Home Dashboard", icon: "home" },
+    pos: { title: "Billing POS Terminal", icon: "point_of_sale" },
+    tables: { title: "Dine-in Floor Tables", icon: "table_restaurant" },
+    history: { title: "Tax Invoice History", icon: "receipt_long" },
+    reports: { title: "Sales & Tax Reports", icon: "analytics" },
+    crm: { title: "CRM & Guests Directory", icon: "contacts" },
+    menu: { title: "Menu & Pricing Manager", icon: "menu_book" },
+    inventory: { title: "Inventory & Recipe BOM", icon: "inventory_2" },
+    settings: { title: "Store & Terminal Settings", icon: "settings" }
+  };
+  const titleInfo = viewTitles[viewName] || { title: viewName.toUpperCase(), icon: "terminal" };
+  const hTitle = document.getElementById("header-active-title");
+  const hIcon = document.getElementById("header-active-icon");
+  if (hTitle) hTitle.textContent = titleInfo.title;
+  if (hIcon) hIcon.textContent = titleInfo.icon;
 
   // Screen-specific updates
   if (viewName === "home") {
@@ -314,6 +339,20 @@ function doNavigate(viewName) {
   } else if (viewName === "pos") {
     updateCustomerBadge();
     renderCart();
+  }
+}
+
+/**
+ * Toggles the left sidebar between full width (w-56) and slim icon rail (w-16).
+ */
+function toggleSidebar() {
+  const sidebar = document.getElementById("app-sidebar");
+  if (!sidebar) return;
+  sidebar.classList.toggle("sidebar-collapsed");
+  const isCollapsed = sidebar.classList.contains("sidebar-collapsed");
+  const toggleIcon = document.getElementById("sidebar-toggle-icon");
+  if (toggleIcon) {
+    toggleIcon.textContent = isCollapsed ? "chevron_right" : "chevron_left";
   }
 }
 
