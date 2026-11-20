@@ -164,8 +164,8 @@ def run():
 
     for port in PORTS:
         try:
-            socketserver.TCPServer.allow_reuse_address = True
-            httpd = socketserver.TCPServer(("127.0.0.1", port), QuietHandler)
+            http.server.ThreadingHTTPServer.allow_reuse_address = True
+            httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), QuietHandler)
             active_port = port
             break
         except OSError:

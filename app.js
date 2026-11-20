@@ -39,7 +39,22 @@ window.addEventListener("DOMContentLoaded", () => {
   updateHeaderBadges();
   renderPosCategories();
   renderPosItems();
+  renderTableSectionFilters();
+  updateCustomerBadge();
 });
+
+/**
+ * Escapes unsafe characters for HTML injection.
+ */
+function escapeHtml(str) {
+  if (str === undefined || str === null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 /**
  * Loads or initializes app state from LocalStorage.
@@ -218,6 +233,7 @@ function doNavigate(viewName) {
   if (viewName === "home") {
     refreshHomeStats();
   } else if (viewName === "tables") {
+    renderTableSectionFilters();
     renderTablesGrid();
   } else if (viewName === "history") {
     renderBillHistory();
@@ -230,6 +246,7 @@ function doNavigate(viewName) {
   } else if (viewName === "settings") {
     loadSettingsForm();
   } else if (viewName === "pos") {
+    updateCustomerBadge();
     renderCart();
   }
 }
@@ -347,6 +364,168 @@ function updatePosHeaderDisplay() {
     document.getElementById("cart-order-type").textContent = "Dine-in";
     document.getElementById("cart-table-or-token").textContent = tableObj ? tableObj.name : "Select Table";
   }
+
+  updateCustomerBadge();
+}
+
+/**
+ * Updates the POS customer button badge text and active styling.
+ */
+function updateCustomerBadge() {
+  const badge = document.getElementById("pos-customer-badge");
+  if (!badge) return;
+  const btn = badge.closest("button");
+  const hasCust = Boolean(activeCustomer && (activeCustomer.name || activeCustomer.phone));
+
+  if (hasCust) {
+    const label = activeCustomer.name ? `👤 ${activeCustomer.name}` : `👤 ${activeCustomer.phone}`;
+    badge.textContent = label;
+    if (btn) {
+      btn.className = "px-2.5 py-1.5 rounded-xl border border-[#171717] bg-[#171717] text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all";
+    }
+  } else {
+    badge.textContent = "Customer";
+    if (btn) {
+      btn.className = "px-2.5 py-1.5 rounded-xl border border-[#E5DDD3] bg-white text-xs font-semibold text-[#5C534B] hover:text-[#171717] flex items-center gap-1 transition-all";
+    }
+  }
+}
+
+/**
+ * Opens Customer Details & CRM recognition modal.
+ */
+function openCustomerInfoModal() {
+  const modal = document.getElementById("customer-modal");
+  if (!modal) return;
+
+  const phoneInput = document.getElementById("cust-modal-phone");
+  const nameInput = document.getElementById("cust-modal-name");
+  const gstinInput = document.getElementById("cust-modal-gstin");
+
+  if (phoneInput) phoneInput.value = activeCustomer.phone || "";
+  if (nameInput) nameInput.value = activeCustomer.name || "";
+  if (gstinInput) gstinInput.value = activeCustomer.gstin || "";
+
+  if (activeCustomer.phone) {
+    onCustomerModalPhoneInput(activeCustomer.phone);
+  } else {
+    const crmCard = document.getElementById("cust-modal-crm-card");
+    if (crmCard) crmCard.classList.add("hidden");
+  }
+
+  modal.classList.remove("hidden");
+  if (phoneInput) phoneInput.focus();
+}
+
+/**
+ * Closes Customer Details modal.
+ */
+function closeCustomerInfoModal() {
+  const modal = document.getElementById("customer-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+/**
+ * Live CRM lookup as cashier types customer phone number.
+ */
+function onCustomerModalPhoneInput(phone) {
+  const crmCard = document.getElementById("cust-modal-crm-card");
+  const nameInput = document.getElementById("cust-modal-name");
+  const gstinInput = document.getElementById("cust-modal-gstin");
+
+  if (!phone || phone.length < 10) {
+    if (crmCard) crmCard.classList.add("hidden");
+    return;
+  }
+
+  const cust = PosStorage.getCustomerByPhone(appState.salesLedger || [], phone);
+  if (cust && crmCard) {
+    document.getElementById("cust-modal-crm-name").textContent = cust.name || "Returning Guest";
+    document.getElementById("cust-modal-crm-details").textContent = `${cust.totalVisits} visits • ₹${cust.lifetimeSpend.toFixed(2)} spent • Favorite: ${cust.favoriteDish || 'Treats'}`;
+    crmCard.classList.remove("hidden");
+
+    if (nameInput && !nameInput.value.trim() && cust.name) {
+      nameInput.value = cust.name;
+    }
+    if (gstinInput && !gstinInput.value.trim() && cust.gstin) {
+      gstinInput.value = cust.gstin;
+    }
+  } else if (crmCard) {
+    crmCard.classList.add("hidden");
+  }
+}
+
+/**
+ * 1-click repeat customer last order from modal.
+ */
+function repeatCustomerOrderFromModal() {
+  const phone = document.getElementById("cust-modal-phone")?.value.trim();
+  closeCustomerInfoModal();
+  if (phone) {
+    repeatCustomerLastOrderFromCRM(phone);
+  }
+}
+
+/**
+ * Saves customer information to active order.
+ */
+function saveCustomerInfo(event) {
+  if (event) event.preventDefault();
+
+  const phone = document.getElementById("cust-modal-phone")?.value.trim() || "";
+  const name = document.getElementById("cust-modal-name")?.value.trim() || "";
+  const gstin = document.getElementById("cust-modal-gstin")?.value.trim().toUpperCase() || "";
+
+  activeCustomer = { name, phone, gstin };
+
+  // Sync with Dine-in open order if any
+  if (activeOrderMode === "dinein" && activeTableId && appState.openOrders && appState.openOrders[activeTableId]) {
+    appState.openOrders[activeTableId].customer = activeCustomer;
+    saveAppState();
+  }
+
+  // Sync with Payment Modal fields
+  const payCustName = document.getElementById("pay-cust-name");
+  const payCustPhone = document.getElementById("pay-cust-phone");
+  const payCustGstin = document.getElementById("pay-cust-gstin");
+  if (payCustName) payCustName.value = name;
+  if (payCustPhone) payCustPhone.value = phone;
+  if (payCustGstin) payCustGstin.value = gstin;
+
+  updateCustomerBadge();
+  closeCustomerInfoModal();
+}
+
+/**
+ * Resets customer details back to walk-in guest.
+ */
+function clearCustomerInfo() {
+  activeCustomer = { name: "", phone: "", gstin: "" };
+
+  const phoneInput = document.getElementById("cust-modal-phone");
+  const nameInput = document.getElementById("cust-modal-name");
+  const gstinInput = document.getElementById("cust-modal-gstin");
+  if (phoneInput) phoneInput.value = "";
+  if (nameInput) nameInput.value = "";
+  if (gstinInput) gstinInput.value = "";
+
+  const crmCard = document.getElementById("cust-modal-crm-card");
+  if (crmCard) crmCard.classList.add("hidden");
+
+  if (activeOrderMode === "dinein" && activeTableId && appState.openOrders && appState.openOrders[activeTableId]) {
+    appState.openOrders[activeTableId].customer = activeCustomer;
+    saveAppState();
+  }
+
+  const payCustName = document.getElementById("pay-cust-name");
+  const payCustPhone = document.getElementById("pay-cust-phone");
+  const payCustGstin = document.getElementById("pay-cust-gstin");
+  if (payCustName) payCustName.value = "";
+  if (payCustPhone) payCustPhone.value = "";
+  if (payCustGstin) payCustGstin.value = "";
+
+  updateCustomerBadge();
+  closeCustomerInfoModal();
 }
 
 function populateTableDropdown() {
@@ -1477,30 +1656,84 @@ function testThermalPrint() {
 
 let activeTableSectionFilter = "all";
 
+/**
+ * Dynamically renders section filter buttons with active pill animation.
+ */
+function renderTableSectionFilters() {
+  const container = document.getElementById("table-section-filters");
+  if (!container) return;
+
+  const tables = appState?.tables || [];
+  const rawSections = tables.filter(t => t.isActive).map(t => t.section || "Main Hall");
+  const uniqueSections = Array.from(new Set(rawSections));
+  if (uniqueSections.length === 0) {
+    uniqueSections.push("Main Hall");
+  }
+
+  // If currently active section filter no longer exists, reset to "all"
+  if (activeTableSectionFilter !== "all" && !uniqueSections.includes(activeTableSectionFilter)) {
+    activeTableSectionFilter = "all";
+  }
+
+  const allSections = ["all", ...uniqueSections];
+  container.innerHTML = "";
+
+  allSections.forEach(sec => {
+    const isAct = activeTableSectionFilter === sec;
+    const label = sec === "all" ? "All" : sec;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
+      isAct
+        ? "bg-[#171717] text-white shadow-sm scale-[1.02]"
+        : "text-[#5C534B] hover:text-[#171717] hover:bg-stone-200/50"
+    }`;
+    btn.textContent = label;
+    btn.onclick = () => filterTableSection(sec);
+    container.appendChild(btn);
+  });
+}
+
+/**
+ * Filters floor tables by floor section with smooth tab movement.
+ */
 function filterTableSection(section) {
   activeTableSectionFilter = section;
+  renderTableSectionFilters();
   renderTablesGrid();
 }
 
+/**
+ * Renders floor plan grid with live table occupancy and quick edit/delete actions.
+ */
 function renderTablesGrid() {
   const grid = document.getElementById("tables-floor-grid");
+  if (!grid) return;
   grid.innerHTML = "";
 
-  const tables = appState.tables || [];
-  const openOrders = appState.openOrders || {};
+  const tables = appState?.tables || [];
+  const openOrders = appState?.openOrders || {};
 
   const filtered = tables.filter(t => {
     if (!t.isActive) return false;
-    if (activeTableSectionFilter !== "all" && t.section !== activeTableSectionFilter) return false;
+    if (activeTableSectionFilter !== "all" && (t.section || "Main Hall") !== activeTableSectionFilter) return false;
     return true;
   });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-full py-12 text-center text-[#5C534B] text-xs">
+        No active tables in "${activeTableSectionFilter === 'all' ? 'Floor Plan' : activeTableSectionFilter}". Click "+ Add Table" to add one.
+      </div>`;
+    return;
+  }
 
   filtered.forEach(tbl => {
     const order = openOrders[tbl.id];
     const isOccupied = Boolean(order && order.items && order.items.length > 0);
 
     const card = document.createElement("div");
-    card.className = `p-4 rounded-2xl border-2 flex flex-col justify-between h-40 cursor-pointer shadow-sm hover:shadow-md transition-all select-none ${
+    card.className = `p-4 rounded-2xl border-2 flex flex-col justify-between h-40 cursor-pointer shadow-sm hover:shadow-md transition-all select-none relative group ${
       isOccupied ? 'table-card-occupied' : 'table-card-free hover:border-[#171717]'
     }`;
 
@@ -1519,11 +1752,21 @@ function renderTablesGrid() {
     card.innerHTML = `
       <div>
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-[#5C534B]">${tbl.section}</span>
-          ${statusBadge}
+          <span class="text-xs font-bold text-[#5C534B]">${tbl.section || 'Main Hall'}</span>
+          <div class="flex items-center gap-1">
+            ${statusBadge}
+            <button onclick="event.stopPropagation(); openAddTableModal('${tbl.id}')" 
+              class="p-1 rounded-md text-stone-400 hover:text-[#171717] hover:bg-white/80 transition-all opacity-80 group-hover:opacity-100" title="Edit Table Name / Seats">
+              <span class="material-symbols-outlined text-[15px]">edit</span>
+            </button>
+            <button onclick="event.stopPropagation(); deleteTable('${tbl.id}', event)" 
+              class="p-1 rounded-md text-stone-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-80 group-hover:opacity-100" title="Delete Table">
+              <span class="material-symbols-outlined text-[15px]">delete</span>
+            </button>
+          </div>
         </div>
         <h3 class="text-xl font-extrabold text-[#171717] mt-2">${tbl.name}</h3>
-        <p class="text-[11px] text-[#5C534B]">${tbl.seats} Seats</p>
+        <p class="text-[11px] text-[#5C534B]">${tbl.seats || 4} Seats</p>
       </div>
 
       <div class="flex items-center justify-between pt-2 border-t border-[#E5DDD3]">
@@ -1534,6 +1777,124 @@ function renderTablesGrid() {
 
     grid.appendChild(card);
   });
+}
+
+/**
+ * Opens Add or Edit Table dialog.
+ */
+function openAddTableModal(tableId = null) {
+  const modal = document.getElementById("table-modal");
+  if (!modal) return;
+
+  const titleEl = document.getElementById("table-modal-title");
+  const submitBtn = document.getElementById("table-modal-submit-btn");
+  const idInput = document.getElementById("tbl-form-id");
+  const nameInput = document.getElementById("tbl-form-name");
+  const sectionInput = document.getElementById("tbl-form-section");
+  const seatsInput = document.getElementById("tbl-form-seats");
+
+  if (tableId) {
+    const tbl = (appState?.tables || []).find(t => t.id === tableId);
+    if (tbl) {
+      if (titleEl) titleEl.textContent = "Edit Table";
+      if (submitBtn) submitBtn.textContent = "Update Table";
+      idInput.value = tbl.id;
+      nameInput.value = tbl.name;
+      sectionInput.value = tbl.section || "Main Hall";
+      seatsInput.value = tbl.seats || 4;
+    }
+  } else {
+    if (titleEl) titleEl.textContent = "Add New Table";
+    if (submitBtn) submitBtn.textContent = "Save Table";
+    idInput.value = "";
+    nameInput.value = "";
+    sectionInput.value = activeTableSectionFilter !== "all" ? activeTableSectionFilter : "Main Hall";
+    seatsInput.value = 4;
+  }
+
+  modal.classList.remove("hidden");
+  nameInput.focus();
+}
+
+/**
+ * Closes Table dialog.
+ */
+function closeTableModal() {
+  const modal = document.getElementById("table-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+/**
+ * Saves new or modified table record to state.
+ */
+function saveTableForm(event) {
+  if (event) event.preventDefault();
+
+  const id = document.getElementById("tbl-form-id")?.value;
+  const name = document.getElementById("tbl-form-name")?.value.trim();
+  const section = document.getElementById("tbl-form-section")?.value.trim() || "Main Hall";
+  const seats = parseInt(document.getElementById("tbl-form-seats")?.value, 10) || 4;
+
+  if (!name) {
+    alert("Please enter a valid table name.");
+    return;
+  }
+
+  if (!appState.tables) appState.tables = [];
+
+  if (id) {
+    const existing = appState.tables.find(t => t.id === id);
+    if (existing) {
+      existing.name = name;
+      existing.section = section;
+      existing.seats = seats;
+    }
+  } else {
+    const newTbl = {
+      id: `tbl_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+      name,
+      section,
+      seats,
+      isActive: true
+    };
+    appState.tables.push(newTbl);
+  }
+
+  saveAppState();
+  closeTableModal();
+  renderTableSectionFilters();
+  renderTablesGrid();
+  populateTableDropdown();
+}
+
+/**
+ * Removes a table from the floor plan after ensuring no active orders are open.
+ */
+function deleteTable(tableId, event) {
+  if (event) event.stopPropagation();
+
+  const openOrders = appState?.openOrders || {};
+  const order = openOrders[tableId];
+  if (order && order.items && order.items.length > 0) {
+    alert("Cannot delete an occupied table! Please settle or cancel the active order first.");
+    return;
+  }
+
+  const tbl = (appState?.tables || []).find(t => t.id === tableId);
+  const tblName = tbl ? tbl.name : "this table";
+  if (!confirm(`Are you sure you want to remove ${tblName} from the floor plan?`)) {
+    return;
+  }
+
+  appState.tables = (appState.tables || []).filter(t => t.id !== tableId);
+  if (appState.openOrders && appState.openOrders[tableId]) {
+    delete appState.openOrders[tableId];
+  }
+
+  saveAppState();
+  renderTableSectionFilters();
+  renderTablesGrid();
+  populateTableDropdown();
 }
 
 // -------------------------------------------------------------
@@ -1837,27 +2198,77 @@ function exportReportsCSV() {
 
 function renderMenuManager() {
   const tbody = document.getElementById("menu-products-table-body");
+  if (!tbody) return;
   tbody.innerHTML = "";
 
-  const products = appState.products || [];
-  if (products.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-[#5C534B]">No products in menu. Click "Add Product" or "Sample Menu" to populate.</td></tr>`;
+  const products = appState?.products || [];
+  const categories = appState?.categories || [];
+
+  // Update category filter dropdown in menu manager header
+  const catFilterSelect = document.getElementById("menu-manager-category-filter");
+  if (catFilterSelect) {
+    const currentVal = catFilterSelect.value || "all";
+    catFilterSelect.innerHTML = '<option value="all">All Categories</option>';
+    categories.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.name;
+      opt.textContent = c.name;
+      if (c.name === currentVal) opt.selected = true;
+      catFilterSelect.appendChild(opt);
+    });
+  }
+
+  const query = (document.getElementById("menu-manager-search")?.value || "").toLowerCase().trim();
+  const selectedCat = catFilterSelect?.value || "all";
+
+  const filtered = products.filter(p => {
+    if (selectedCat !== "all" && p.category !== selectedCat) return false;
+    if (query) {
+      const matchName = (p.name || "").toLowerCase().includes(query);
+      const matchCode = (p.shortCode || "").toLowerCase().includes(query);
+      if (!matchName && !matchCode) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    const emptyMsg = products.length === 0
+      ? 'No products in menu. Click "Add Product" or "Sample Menu" to populate.'
+      : 'No dishes match the selected category or search filter.';
+    tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-[#5C534B]">${emptyMsg}</td></tr>`;
     return;
   }
 
-  products.forEach(p => {
+  filtered.forEach(p => {
     const tr = document.createElement("tr");
     tr.className = "hover:bg-[#FCFAF8]";
 
     const dietMark = p.diet === "veg"
-      ? `<span class="diet-veg"><span class="diet-veg-dot"></span></span>`
-      : `<span class="diet-non-veg"><span class="diet-non-veg-dot"></span></span>`;
+      ? `<span class="diet-veg" title="Vegetarian"><span class="diet-veg-dot"></span></span>`
+      : `<span class="diet-non-veg" title="Non-Vegetarian"><span class="diet-non-veg-dot"></span></span>`;
+
+    const sizesCount = Array.isArray(p.sizes) ? p.sizes.length : 0;
+    const addonsCount = Array.isArray(p.addons) ? p.addons.length : 0;
+
+    const sizesBadge = sizesCount > 0
+      ? `<span class="text-[10px] font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded ml-1" title="${p.sizes.map(s => `${s.name}: ₹${s.price}`).join(', ')}">${sizesCount} sizes</span>`
+      : '';
+
+    const addonsBadge = addonsCount > 0
+      ? `<span class="text-[10px] font-mono font-bold bg-blue-50 text-blue-800 border border-blue-200 px-1.5 py-0.5 rounded ml-1" title="${p.addons.map(a => `${a.name}: +₹${a.price}`).join(', ')}">${addonsCount} add-ons</span>`
+      : '';
 
     tr.innerHTML = `
-      <td class="p-3 font-bold text-[#171717]">${p.name}</td>
+      <td class="p-3 font-bold text-[#171717]">
+        <div class="flex items-center flex-wrap gap-1">
+          <span>${p.name}</span>
+          ${sizesBadge}
+          ${addonsBadge}
+        </div>
+      </td>
       <td class="p-3 font-mono font-bold text-xs bg-stone-100 rounded px-1">${p.shortCode || '—'}</td>
-      <td class="p-3 text-[#5C534B]">${p.category}</td>
-      <td class="p-3 text-right font-mono font-bold text-[#171717]">₹${p.price.toFixed(2)}</td>
+      <td class="p-3 text-[#5C534B] font-medium">${p.category || 'General'}</td>
+      <td class="p-3 text-right font-mono font-bold text-[#171717]">₹${(p.price || 0).toFixed(2)}</td>
       <td class="p-3 text-center font-mono">${p.gstRate || 5.0}%</td>
       <td class="p-3 text-center">${dietMark}</td>
       <td class="p-3 text-center">
@@ -1867,8 +2278,11 @@ function renderMenuManager() {
       </td>
       <td class="p-3 text-center">
         <div class="flex items-center justify-center gap-1">
-          <button onclick="editProduct('${p.id}')" class="p-1 rounded hover:bg-[#F6F2EC]" title="Edit Dish">
+          <button onclick="editProduct('${p.id}')" class="p-1 rounded hover:bg-[#F6F2EC] text-[#5C534B] hover:text-[#171717]" title="Edit Dish">
             <span class="material-symbols-outlined text-[16px]">edit</span>
+          </button>
+          <button onclick="duplicateProduct('${p.id}')" class="p-1 rounded hover:bg-stone-100 text-stone-500 hover:text-[#171717]" title="Duplicate / Clone Dish">
+            <span class="material-symbols-outlined text-[16px]">content_copy</span>
           </button>
           <button onclick="deleteProduct('${p.id}')" class="p-1 rounded text-red-600 hover:bg-red-50" title="Delete Dish">
             <span class="material-symbols-outlined text-[16px]">delete</span>
@@ -1880,14 +2294,281 @@ function renderMenuManager() {
   });
 }
 
+// -------------------------------------------------------------
+// CATEGORY MANAGEMENT (Add, Rename, Delete Categories)
+// -------------------------------------------------------------
+
+function openCategoryManagerModal() {
+  const modal = document.getElementById("category-modal");
+  if (!modal) return;
+
+  cancelEditCategory();
+  renderCategoryTable();
+  modal.classList.remove("hidden");
+}
+
+function closeCategoryModal() {
+  const modal = document.getElementById("category-modal");
+  if (modal) modal.classList.add("hidden");
+  populateProductCategorySelect();
+  renderPosCategories();
+  renderMenuManager();
+}
+
+function renderCategoryTable() {
+  const tbody = document.getElementById("category-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const categories = appState?.categories || [];
+  const products = appState?.products || [];
+
+  if (categories.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-[#5C534B]">No categories defined. Add your first category above!</td></tr>`;
+    return;
+  }
+
+  categories.forEach(cat => {
+    const dishCount = products.filter(p => p.category === cat.name).length;
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-[#FCFAF8]";
+    tr.innerHTML = `
+      <td class="p-2.5 font-bold text-[#171717]">${cat.name}</td>
+      <td class="p-2.5 text-center font-mono font-bold text-[#5C534B]">${dishCount}</td>
+      <td class="p-2.5 text-right">
+        <div class="flex items-center justify-end gap-1">
+          <button onclick="startEditCategory('${cat.id}')" class="p-1 rounded text-stone-500 hover:text-[#171717] hover:bg-stone-100" title="Rename Category">
+            <span class="material-symbols-outlined text-[16px]">edit</span>
+          </button>
+          <button onclick="deleteCategory('${cat.id}')" class="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50" title="Delete Category">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function startEditCategory(catId) {
+  const cat = (appState?.categories || []).find(c => c.id === catId);
+  if (!cat) return;
+
+  const idInput = document.getElementById("cat-form-id");
+  const nameInput = document.getElementById("cat-form-name");
+  const labelEl = document.getElementById("cat-form-label");
+  const submitBtn = document.getElementById("cat-form-submit-btn");
+  const cancelBtn = document.getElementById("cat-form-cancel-edit-btn");
+
+  if (idInput) idInput.value = cat.id;
+  if (nameInput) nameInput.value = cat.name;
+  if (labelEl) labelEl.textContent = "Edit Category Name";
+  if (submitBtn) submitBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">check</span> Update';
+  if (cancelBtn) cancelBtn.classList.remove("hidden");
+  if (nameInput) nameInput.focus();
+}
+
+function cancelEditCategory() {
+  const idInput = document.getElementById("cat-form-id");
+  const nameInput = document.getElementById("cat-form-name");
+  const labelEl = document.getElementById("cat-form-label");
+  const submitBtn = document.getElementById("cat-form-submit-btn");
+  const cancelBtn = document.getElementById("cat-form-cancel-edit-btn");
+
+  if (idInput) idInput.value = "";
+  if (nameInput) nameInput.value = "";
+  if (labelEl) labelEl.textContent = "Category Name";
+  if (submitBtn) submitBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">add</span> Add Category';
+  if (cancelBtn) cancelBtn.classList.add("hidden");
+}
+
+function saveCategoryForm(event) {
+  if (event) event.preventDefault();
+
+  const id = document.getElementById("cat-form-id")?.value;
+  const name = document.getElementById("cat-form-name")?.value.trim();
+
+  if (!name) {
+    alert("Please enter a category name.");
+    return;
+  }
+
+  if (!appState.categories) appState.categories = [];
+
+  if (id) {
+    const cat = appState.categories.find(c => c.id === id);
+    if (cat) {
+      const oldName = cat.name;
+      const clash = appState.categories.find(c => c.id !== id && c.name.toLowerCase() === name.toLowerCase());
+      if (clash) {
+        alert(`A category named "${name}" already exists.`);
+        return;
+      }
+      cat.name = name;
+      (appState.products || []).forEach(p => {
+        if (p.category === oldName) {
+          p.category = name;
+        }
+      });
+    }
+  } else {
+    const clash = appState.categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (clash) {
+      alert(`A category named "${name}" already exists.`);
+      return;
+    }
+    const newCat = {
+      id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+      name,
+      icon: "category",
+      sortOrder: appState.categories.length + 1
+    };
+    appState.categories.push(newCat);
+  }
+
+  saveAppState();
+  cancelEditCategory();
+  renderCategoryTable();
+  populateProductCategorySelect();
+  renderPosCategories();
+  renderMenuManager();
+}
+
+function deleteCategory(catId) {
+  const cat = (appState?.categories || []).find(c => c.id === catId);
+  if (!cat) return;
+
+  const count = (appState.products || []).filter(p => p.category === cat.name).length;
+  if (count > 0) {
+    if (!confirm(`Category "${cat.name}" has ${count} dish(es). Deleting it will reassign these dishes to "General". Proceed?`)) {
+      return;
+    }
+    (appState.products || []).forEach(p => {
+      if (p.category === cat.name) {
+        p.category = "General";
+      }
+    });
+    if (!appState.categories.some(c => c.name === "General")) {
+      appState.categories.push({ id: "cat_general", name: "General", icon: "category", sortOrder: 99 });
+    }
+  } else {
+    if (!confirm(`Are you sure you want to delete category "${cat.name}"?`)) {
+      return;
+    }
+  }
+
+  appState.categories = appState.categories.filter(c => c.id !== catId);
+  saveAppState();
+  cancelEditCategory();
+  renderCategoryTable();
+  populateProductCategorySelect();
+  renderPosCategories();
+  renderMenuManager();
+}
+
+function quickAddCategoryPrompt() {
+  const name = prompt("Enter new category name:");
+  if (!name || !name.trim()) return;
+  const cleanName = name.trim();
+
+  if (!appState.categories) appState.categories = [];
+  const existing = appState.categories.find(c => c.name.toLowerCase() === cleanName.toLowerCase());
+  if (existing) {
+    populateProductCategorySelect(existing.name);
+    return;
+  }
+
+  const newCat = {
+    id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+    name: cleanName,
+    icon: "category",
+    sortOrder: appState.categories.length + 1
+  };
+  appState.categories.push(newCat);
+  saveAppState();
+  populateProductCategorySelect(cleanName);
+  renderPosCategories();
+}
+
+// -------------------------------------------------------------
+// PRODUCT PORTION SIZES & ADD-ONS BUILDERS
+// -------------------------------------------------------------
+
+function addProductSizeRow(name = "", price = "") {
+  const container = document.getElementById("prod-sizes-rows-container");
+  if (!container) return;
+
+  const row = document.createElement("div");
+  row.className = "flex items-center gap-2 size-row";
+  row.innerHTML = `
+    <input type="text" placeholder="Size Name (e.g. Regular, Large, Half)" value="${escapeHtml(name)}" 
+      class="size-name-input flex-1 p-2 bg-white border border-[#E5DDD3] rounded-lg text-xs font-semibold focus:outline-none focus:border-[#171717]">
+    <div class="flex items-center w-28">
+      <span class="px-2 py-2 bg-stone-100 border border-r-0 border-[#E5DDD3] rounded-l-lg text-xs font-bold text-[#5C534B]">₹</span>
+      <input type="number" step="1" min="0" placeholder="Price" value="${price !== undefined && price !== null ? price : ''}" 
+        class="size-price-input w-full p-2 bg-white border border-[#E5DDD3] rounded-r-lg font-mono font-bold text-xs focus:outline-none focus:border-[#171717]">
+    </div>
+    <button type="button" onclick="this.closest('.size-row').remove()" class="p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Remove Size">
+      <span class="material-symbols-outlined text-[16px]">close</span>
+    </button>
+  `;
+  container.appendChild(row);
+}
+
+function addProductAddonRow(name = "", price = "") {
+  const container = document.getElementById("prod-addons-rows-container");
+  if (!container) return;
+
+  const row = document.createElement("div");
+  row.className = "flex items-center gap-2 addon-row";
+  row.innerHTML = `
+    <input type="text" placeholder="Add-on Name (e.g. Extra Cheese)" value="${escapeHtml(name)}" 
+      class="addon-name-input flex-1 p-2 bg-white border border-[#E5DDD3] rounded-lg text-xs font-semibold focus:outline-none focus:border-[#171717]">
+    <div class="flex items-center w-28">
+      <span class="px-2 py-2 bg-stone-100 border border-r-0 border-[#E5DDD3] rounded-l-lg text-xs font-bold text-[#5C534B]">+₹</span>
+      <input type="number" step="1" min="0" placeholder="Extra" value="${price !== undefined && price !== null ? price : ''}" 
+        class="addon-price-input w-full p-2 bg-white border border-[#E5DDD3] rounded-r-lg font-mono font-bold text-xs focus:outline-none focus:border-[#171717]">
+    </div>
+    <button type="button" onclick="this.closest('.addon-row').remove()" class="p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Remove Add-on">
+      <span class="material-symbols-outlined text-[16px]">close</span>
+    </button>
+  `;
+  container.appendChild(row);
+}
+
+function duplicateProduct(productId) {
+  const prod = (appState?.products || []).find(p => p.id === productId);
+  if (!prod) return;
+
+  let newCode = `${prod.shortCode || 'ITEM'}1`;
+  let counter = 1;
+  while ((appState.products || []).some(p => p.shortCode === newCode)) {
+    counter++;
+    newCode = `${prod.shortCode || 'ITEM'}${counter}`;
+  }
+
+  const copy = {
+    ...JSON.parse(JSON.stringify(prod)),
+    id: `prod_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    name: `${prod.name} (Copy)`,
+    shortCode: newCode,
+    sortOrder: (appState.products || []).length + 1
+  };
+
+  appState.products.push(copy);
+  saveAppState();
+  renderMenuManager();
+  renderPosCategories();
+  renderPosItems();
+  alert(`Cloned "${prod.name}" as "${copy.name}" [${copy.shortCode}].`);
+}
+
 function openAddProductModal() {
   document.getElementById("product-modal-title").textContent = "Add New Product";
   document.getElementById("prod-id").value = "";
   document.getElementById("prod-name").value = "";
   document.getElementById("prod-code").value = "";
   document.getElementById("prod-price").value = "";
-  document.getElementById("prod-sizes").value = "";
-  document.getElementById("prod-addons").value = "";
   document.getElementById("prod-desc").value = "";
   document.getElementById("prod-notes").value = "";
   document.getElementById("prod-available").checked = true;
@@ -1896,8 +2577,15 @@ function openAddProductModal() {
   document.getElementById("prod-stock-threshold").value = "5";
   document.getElementById("prod-stock-fields").classList.add("hidden");
 
+  // Reset portion sizes and add-ons containers
+  const sizesContainer = document.getElementById("prod-sizes-rows-container");
+  if (sizesContainer) sizesContainer.innerHTML = "";
+  const addonsContainer = document.getElementById("prod-addons-rows-container");
+  if (addonsContainer) addonsContainer.innerHTML = "";
+
   populateProductCategorySelect();
   document.getElementById("product-modal").classList.remove("hidden");
+  document.getElementById("prod-name").focus();
 }
 
 function toggleStockInputs(checked) {
@@ -1910,15 +2598,16 @@ function toggleStockInputs(checked) {
 
 function populateProductCategorySelect(selectedCat = "") {
   const select = document.getElementById("prod-category");
+  if (!select) return;
   select.innerHTML = "";
-  const categories = appState.categories || [];
+  const categories = appState?.categories || [];
   if (categories.length === 0) {
-    // Add default general category if none exist
-    const defaultCats = ["Burgers", "Fried Chicken", "Pizza", "Shawarma", "Sides & Fries", "Shakes & Mojitos", "Desserts"];
+    const defaultCats = ["Burgers", "Fried Chicken", "Pizza", "Shawarma", "Sides & Fries", "Shakes & Mojitos", "Desserts", "General"];
     defaultCats.forEach(c => {
       const opt = document.createElement("option");
       opt.value = c;
       opt.textContent = c;
+      if (c === selectedCat) opt.selected = true;
       select.appendChild(opt);
     });
   } else {
@@ -1942,7 +2631,7 @@ function saveProduct(event) {
   const name = document.getElementById("prod-name").value.trim();
   const shortCode = document.getElementById("prod-code").value.trim().toUpperCase();
   const category = document.getElementById("prod-category").value;
-  const price = parseFloat(document.getElementById("prod-price").value) || 0;
+  let price = parseFloat(document.getElementById("prod-price").value) || 0;
   const diet = document.getElementById("prod-diet").value;
   const description = document.getElementById("prod-desc").value.trim();
   const notesStr = document.getElementById("prod-notes").value.trim();
@@ -1953,37 +2642,26 @@ function saveProduct(event) {
 
   const quickNotes = notesStr ? notesStr.split(",").map(s => s.trim()).filter(Boolean) : [];
 
-  // Parse portion sizes (e.g. Regular: 120, Large: 160)
-  const sizesStr = (document.getElementById("prod-sizes")?.value || "").trim();
-  const sizes = [];
-  if (sizesStr) {
-    sizesStr.split(",").forEach(part => {
-      const bits = part.split(":");
-      if (bits.length >= 2) {
-        const sName = bits[0].trim();
-        const sPrice = parseFloat(bits[1].trim());
-        if (sName && !isNaN(sPrice)) {
-          sizes.push({ name: sName, price: sPrice });
-        }
-      }
-    });
+  // Read Portion Sizes rows
+  const sizeRows = Array.from(document.querySelectorAll("#prod-sizes-rows-container .size-row"));
+  const sizes = sizeRows.map(row => {
+    const sName = row.querySelector(".size-name-input")?.value.trim() || "";
+    const sPrice = parseFloat(row.querySelector(".size-price-input")?.value) || 0;
+    return { name: sName, price: sPrice };
+  }).filter(s => s.name.length > 0);
+
+  // If base price was 0 or omitted but portion sizes exist, default base price to first size
+  if (price === 0 && sizes.length > 0) {
+    price = sizes[0].price;
   }
 
-  // Parse add-ons (e.g. Extra Cheese: 20, Mayo Dip: 15)
-  const addonsStr = (document.getElementById("prod-addons")?.value || "").trim();
-  const addons = [];
-  if (addonsStr) {
-    addonsStr.split(",").forEach(part => {
-      const bits = part.split(":");
-      if (bits.length >= 2) {
-        const aName = bits[0].trim();
-        const aPrice = parseFloat(bits[1].trim());
-        if (aName && !isNaN(aPrice)) {
-          addons.push({ name: aName, price: aPrice });
-        }
-      }
-    });
-  }
+  // Read Add-ons rows
+  const addonRows = Array.from(document.querySelectorAll("#prod-addons-rows-container .addon-row"));
+  const addons = addonRows.map(row => {
+    const aName = row.querySelector(".addon-name-input")?.value.trim() || "";
+    const aPrice = parseFloat(row.querySelector(".addon-price-input")?.value) || 0;
+    return { name: aName, price: aPrice };
+  }).filter(a => a.name.length > 0);
 
   if (!appState.products) appState.products = [];
 
@@ -1995,7 +2673,7 @@ function saveProduct(event) {
   }
 
   if (id) {
-    // Edit
+    // Edit existing product
     const idx = appState.products.findIndex(p => p.id === id);
     if (idx >= 0) {
       appState.products[idx] = {
@@ -2016,7 +2694,7 @@ function saveProduct(event) {
       };
     }
   } else {
-    // Create new
+    // Create new product
     const newProd = {
       id: `prod_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       name,
@@ -2047,7 +2725,7 @@ function saveProduct(event) {
 }
 
 function editProduct(productId) {
-  const prod = (appState.products || []).find(p => p.id === productId);
+  const prod = (appState?.products || []).find(p => p.id === productId);
   if (!prod) return;
 
   document.getElementById("product-modal-title").textContent = "Edit Product";
@@ -2055,8 +2733,6 @@ function editProduct(productId) {
   document.getElementById("prod-name").value = prod.name;
   document.getElementById("prod-code").value = prod.shortCode || "";
   document.getElementById("prod-price").value = prod.price;
-  document.getElementById("prod-sizes").value = (prod.sizes || []).map(s => `${s.name}: ${s.price}`).join(", ");
-  document.getElementById("prod-addons").value = (prod.addons || []).map(a => `${a.name}: ${a.price}`).join(", ");
   document.getElementById("prod-diet").value = prod.diet || "non-veg";
   document.getElementById("prod-desc").value = prod.description || "";
   document.getElementById("prod-notes").value = (prod.quickNotes || []).join(", ");
@@ -2071,8 +2747,27 @@ function editProduct(productId) {
     document.getElementById("prod-stock-fields").classList.add("hidden");
   }
 
+  // Populate Portion Sizes rows
+  const sizesContainer = document.getElementById("prod-sizes-rows-container");
+  if (sizesContainer) {
+    sizesContainer.innerHTML = "";
+    if (Array.isArray(prod.sizes) && prod.sizes.length > 0) {
+      prod.sizes.forEach(s => addProductSizeRow(s.name, s.price));
+    }
+  }
+
+  // Populate Add-ons rows
+  const addonsContainer = document.getElementById("prod-addons-rows-container");
+  if (addonsContainer) {
+    addonsContainer.innerHTML = "";
+    if (Array.isArray(prod.addons) && prod.addons.length > 0) {
+      prod.addons.forEach(a => addProductAddonRow(a.name, a.price));
+    }
+  }
+
   populateProductCategorySelect(prod.category);
   document.getElementById("product-modal").classList.remove("hidden");
+  document.getElementById("prod-name").focus();
 }
 
 function toggleProductAvailability(productId) {
