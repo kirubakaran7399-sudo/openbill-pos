@@ -3,6 +3,10 @@
  * The Retro Cafeteria POS — Preset Data, Sample Menu & Initial Store State
  */
 
+const PosInventoryModule = typeof require !== "undefined"
+  ? require("../core/inventory.js")
+  : (typeof window !== "undefined" ? window.PosInventory : null);
+
 const SAMPLE_STORE = {
   name: "THE RETRO CAFETERIA",
   tagline: "CRAVE MORE. LIVE RETRO.",
@@ -194,12 +198,26 @@ const SAMPLE_TABLES = [
  * with the option to load sample menu items anytime.
  */
 function createInitialState(loadSampleCatalog = false) {
+  const invSource = (typeof PosInventoryModule !== "undefined" && PosInventoryModule?.SAMPLE_INVENTORY_ITEMS)
+    ? PosInventoryModule
+    : (typeof PosInventory !== "undefined" && PosInventory?.SAMPLE_INVENTORY_ITEMS
+      ? PosInventory
+      : (typeof window !== "undefined" && window.PosInventory ? window.PosInventory : null));
+
+  const sampleInv = (loadSampleCatalog && invSource) ? [...invSource.SAMPLE_INVENTORY_ITEMS] : [];
+  const sampleRec = (loadSampleCatalog && invSource) ? [...invSource.SAMPLE_RECIPES] : [];
+
   return {
     version: 3,
     store: { ...SAMPLE_STORE },
     categories: loadSampleCatalog ? [...SAMPLE_CATEGORIES] : [],
     products: loadSampleCatalog ? [...SAMPLE_PRODUCTS] : [],
     tables: loadSampleCatalog ? [...SAMPLE_TABLES] : [],
+    inventory: sampleInv,
+    recipes: sampleRec,
+    purchaseInwards: [],
+    wastageLogs: [],
+    stockAudits: [],
     staff: [
       { id: "usr_owner", name: "Store Owner", role: "owner", pin: "1234", title: "Owner / Manager" },
       { id: "usr_cashier", name: "Counter Cashier", role: "cashier", pin: "0000", title: "Cashier" }

@@ -45,7 +45,7 @@
   </script>
 
   <!-- Application Styles -->
-  <link rel="stylesheet" href="style.css?v=3.2.0">
+  <link rel="stylesheet" href="style.css?v=3.3.0">
 </head>
 <body class="bg-[#F6F2EC] text-[#171717] h-screen flex flex-col overflow-hidden select-none">
 
@@ -93,6 +93,10 @@
       </button>
       <button onclick="navigateTo('menu')" id="nav-menu" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
         <span class="material-symbols-outlined text-[17px]">menu_book</span> <span>Menu</span>
+      </button>
+      <button onclick="navigateTo('inventory')" id="nav-inventory" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
+        <span class="material-symbols-outlined text-[17px]">inventory_2</span> <span>Inventory</span>
+        <span id="header-inventory-alert-badge" class="ml-0.5 px-1.5 py-0.2 bg-amber-600 text-white text-[10px] rounded-full hidden">0</span>
       </button>
       <button onclick="navigateTo('settings')" id="nav-settings" class="nav-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-[#171717] hover:bg-white whitespace-nowrap shrink-0">
         <span class="material-symbols-outlined text-[17px]">settings</span> <span>Settings</span>
@@ -274,6 +278,9 @@
           </button>
           <button onclick="navigateTo('reports')" class="btn-secondary !min-h-[42px] !py-2 !text-xs">
             <span class="material-symbols-outlined text-[18px]">receipt</span> View Daily Z-Report
+          </button>
+          <button onclick="navigateTo('inventory')" class="btn-secondary !min-h-[42px] !py-2 !text-xs">
+            <span class="material-symbols-outlined text-[18px]">inventory_2</span> Raw Materials & Inventory
           </button>
           <button onclick="testThermalPrint()" class="btn-secondary !min-h-[42px] !py-2 !text-xs">
             <span class="material-symbols-outlined text-[18px]">print</span> Test Thermal Printer
@@ -771,6 +778,332 @@
             <!-- Populated dynamically -->
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- VIEW 6B: INVENTORY & RECIPE BOM (Offline-First Restaurant Stock Engine) -->
+    <section id="view-inventory" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-5 max-w-7xl mx-auto hidden">
+      <!-- Inventory Header & Live KPIs -->
+      <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col gap-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="w-12 h-12 rounded-xl bg-[#171717] text-white flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[28px]">inventory_2</span>
+            </span>
+            <div>
+              <h1 class="text-xl font-extrabold text-[#171717]">Inventory & Kitchen Raw Materials</h1>
+              <p class="text-xs text-[#5C534B] mt-0.5">Live stock control, Recipe BOM auto-deduction on billing, purchase entries & wastage logs.</p>
+            </div>
+          </div>
+          <!-- Action Buttons -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="openAddInventoryItemModal()" class="btn-primary !min-h-[38px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-[16px]">add</span> Add Raw Material
+            </button>
+            <button onclick="openStockInwardModal()" class="btn-secondary !min-h-[38px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 border border-[#E5DDD3]">
+              <span class="material-symbols-outlined text-[16px]">local_shipping</span> Purchase Inward
+            </button>
+            <button onclick="openStockWastageModal()" class="btn-secondary !min-h-[38px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 border border-[#E5DDD3] text-red-700 hover:bg-red-50">
+              <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Log Waste
+            </button>
+            <button onclick="exportInventoryCSVDownload()" class="btn-secondary !min-h-[38px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 border border-[#E5DDD3]" title="Export Inventory to CSV">
+              <span class="material-symbols-outlined text-[16px]">download</span> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Key Performance Metrics -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-[#F6F2EC]">
+          <div class="p-3 bg-[#FCFAF8] rounded-xl border border-[#E5DDD3]">
+            <span class="text-[11px] font-bold text-[#5C534B] uppercase tracking-wider block">Stock Valuation</span>
+            <span id="inv-kpi-total-val" class="text-xl font-mono font-extrabold text-[#171717]">₹0.00</span>
+          </div>
+          <div class="p-3 bg-[#FCFAF8] rounded-xl border border-[#E5DDD3]">
+            <span class="text-[11px] font-bold text-[#5C534B] uppercase tracking-wider block">Total Raw Materials</span>
+            <span id="inv-kpi-total-items" class="text-xl font-mono font-extrabold text-[#171717]">0</span>
+          </div>
+          <div class="p-3 bg-[#FCFAF8] rounded-xl border border-[#E5DDD3]">
+            <span class="text-[11px] font-bold text-[#5C534B] uppercase tracking-wider block">Low Stock Alerts</span>
+            <span id="inv-kpi-low-stock" class="text-xl font-mono font-extrabold text-amber-700">0</span>
+          </div>
+          <div class="p-3 bg-[#FCFAF8] rounded-xl border border-[#E5DDD3]">
+            <span class="text-[11px] font-bold text-[#5C534B] uppercase tracking-wider block">Today's Wastage Loss</span>
+            <span id="inv-kpi-waste-cost" class="text-xl font-mono font-extrabold text-red-700">₹0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-Tab Navigation Bar -->
+      <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-[#E5DDD3] shadow-sm select-none overflow-x-auto">
+        <button onclick="switchInventorySubtab('items')" id="subtab-inv-items" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#171717] text-white whitespace-nowrap">
+          Raw Materials & Stock
+        </button>
+        <button onclick="switchInventorySubtab('recipes')" id="subtab-inv-recipes" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap">
+          Recipe / BOM Mapping
+        </button>
+        <button onclick="switchInventorySubtab('inward')" id="subtab-inv-inward" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap">
+          Purchase Inwards (GRN)
+        </button>
+        <button onclick="switchInventorySubtab('wastage')" id="subtab-inv-wastage" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap">
+          Kitchen Wastage
+        </button>
+        <button onclick="switchInventorySubtab('audit')" id="subtab-inv-audit" class="inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap">
+          Physical Count Audit
+        </button>
+      </div>
+
+      <!-- PANE 1: RAW MATERIALS & STOCK TABLE -->
+      <div id="inv-pane-items" class="inv-pane flex flex-col gap-4">
+        <!-- Filter Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-[#E5DDD3]">
+          <div class="flex items-center gap-2 flex-1 min-w-[260px]">
+            <div class="relative flex-1">
+              <span class="material-symbols-outlined absolute left-3 top-2.5 text-[#5C534B] text-[18px]">search</span>
+              <input type="text" id="inv-search-input" oninput="renderInventoryItemsTable()" placeholder="Search raw material name, SKU or supplier..." 
+                class="w-full pl-9 pr-3 py-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-[#C82026]">
+            </div>
+            <select id="inv-cat-filter" onchange="renderInventoryItemsTable()" class="py-2 px-3 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-bold text-[#5C534B] focus:bg-white focus:outline-none">
+              <option value="all">All Categories</option>
+              <option value="Bakery">Bakery</option>
+              <option value="Poultry & Meat">Poultry & Meat</option>
+              <option value="Dairy">Dairy</option>
+              <option value="Produce">Produce</option>
+              <option value="Sauces & Condiments">Sauces & Condiments</option>
+              <option value="Beverages & Syrups">Beverages & Syrups</option>
+              <option value="Packaging">Packaging</option>
+              <option value="General">General</option>
+            </select>
+            <select id="inv-status-filter" onchange="renderInventoryItemsTable()" class="py-2 px-3 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-bold text-[#5C534B] focus:bg-white focus:outline-none">
+              <option value="all">All Statuses</option>
+              <option value="low">Low Stock / Reorder Needed</option>
+              <option value="out">Out of Stock Only</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="inv-table-count-label" class="text-xs text-[#5C534B] font-bold">Showing 0 materials</span>
+            <button onclick="loadSampleInventoryData()" class="px-3 py-1.5 rounded-lg bg-[#EFE3D6] text-[#6B4226] text-xs font-bold hover:bg-[#6B4226] hover:text-white transition-all" title="Load The Retro Cafeteria official ingredient list and recipes">
+              Load Sample Ingredients
+            </button>
+          </div>
+        </div>
+
+        <!-- Inventory Table -->
+        <div class="bg-white rounded-2xl border border-[#E5DDD3] overflow-hidden shadow-sm">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-[#FCFAF8] text-[#5C534B] uppercase font-bold border-b border-[#E5DDD3]">
+              <tr>
+                <th class="p-3 pl-4">Raw Material / SKU</th>
+                <th class="p-3">Category</th>
+                <th class="p-3 text-center">Current Stock</th>
+                <th class="p-3 text-center">Reorder Level</th>
+                <th class="p-3 text-right">Unit Cost</th>
+                <th class="p-3 text-right">Total Valuation</th>
+                <th class="p-3 text-center">Status</th>
+                <th class="p-3 text-center">Quick Stock Adjust</th>
+                <th class="p-3 pr-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inv-items-table-body" class="divide-y divide-[#F6F2EC]">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PANE 2: RECIPE / BOM MAPPING -->
+      <div id="inv-pane-recipes" class="inv-pane flex flex-col gap-4 hidden">
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col gap-4">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base font-extrabold text-[#171717]">Recipe / Bill of Materials (BOM)</h2>
+              <p class="text-xs text-[#5C534B]">Map which raw materials are consumed whenever a menu dish is billed.</p>
+            </div>
+            <!-- Dish Selector -->
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-bold text-[#5C534B]">Select Menu Dish:</label>
+              <select id="recipe-dish-select" onchange="onRecipeDishSelected(this.value)" 
+                class="py-2 px-3 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl text-xs font-bold text-[#171717] focus:bg-white focus:outline-none">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Dish Recipe Cost & Margin Card -->
+          <div id="recipe-summary-card" class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-xl bg-[#FCFAF8] border border-[#E5DDD3]">
+            <div>
+              <span class="text-[10px] uppercase font-bold text-[#5C534B] block">Selling Price</span>
+              <span id="recipe-selling-price" class="text-base font-mono font-extrabold text-[#171717]">₹0.00</span>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-[#5C534B] block">Recipe Prep Cost</span>
+              <span id="recipe-prep-cost" class="text-base font-mono font-extrabold text-[#6B4226]">₹0.00</span>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-[#5C534B] block">Gross Margin</span>
+              <span id="recipe-gross-margin" class="text-base font-mono font-extrabold text-emerald-700">₹0.00</span>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-[#5C534B] block">Food Cost %</span>
+              <span id="recipe-food-cost-pct" class="text-base font-mono font-extrabold text-[#171717]">0%</span>
+            </div>
+          </div>
+
+          <!-- Add Ingredient to Recipe Row -->
+          <div class="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-stone-50 border border-[#E5DDD3]">
+            <span class="text-xs font-bold text-[#171717]">Add Ingredient to Recipe:</span>
+            <select id="recipe-add-raw-select" class="py-1.5 px-3 bg-white border border-[#E5DDD3] rounded-lg text-xs font-semibold focus:outline-none flex-1 min-w-[200px]">
+              <!-- Populated dynamically -->
+            </select>
+            <div class="flex items-center gap-1">
+              <input type="number" id="recipe-add-qty" min="0.001" step="any" placeholder="Qty per portion" 
+                class="w-32 py-1.5 px-2 bg-white border border-[#E5DDD3] rounded-lg text-xs font-mono font-bold focus:outline-none">
+              <span id="recipe-add-uom-label" class="text-xs font-bold text-[#5C534B] w-12 text-center">pcs</span>
+            </div>
+            <button onclick="addIngredientToCurrentRecipe()" class="btn-primary !min-h-[34px] !py-1 !px-3 !text-xs flex items-center gap-1">
+              <span class="material-symbols-outlined text-[15px]">add</span> Add
+            </button>
+          </div>
+
+          <!-- Recipe Ingredients Table -->
+          <div class="border border-[#E5DDD3] rounded-xl overflow-hidden">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-[#FCFAF8] text-[#5C534B] uppercase font-bold border-b border-[#E5DDD3]">
+                <tr>
+                  <th class="p-2.5 pl-3">Raw Material Ingredient</th>
+                  <th class="p-2.5">Category</th>
+                  <th class="p-2.5 text-center">Qty per Dish Portion</th>
+                  <th class="p-2.5 text-right">Unit Cost</th>
+                  <th class="p-2.5 text-right">Cost Contribution</th>
+                  <th class="p-2.5 pr-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="recipe-ingredients-table-body" class="divide-y divide-[#F6F2EC]">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 3: PURCHASE INWARD (GRN) -->
+      <div id="inv-pane-inward" class="inv-pane flex flex-col gap-4 hidden">
+        <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <div>
+            <h2 class="text-base font-extrabold text-[#171717]">Purchase Inward (Goods Received Notes)</h2>
+            <p class="text-xs text-[#5C534B]">Log shipments from bakery, poultry, dairy, and beverage vendors to replenish stock.</p>
+          </div>
+          <button onclick="openStockInwardModal()" class="btn-primary !min-h-[36px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px]">local_shipping</span> New Purchase Entry
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[#E5DDD3] overflow-hidden shadow-sm">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-[#FCFAF8] text-[#5C534B] uppercase font-bold border-b border-[#E5DDD3]">
+              <tr>
+                <th class="p-3 pl-4">GRN # / Date</th>
+                <th class="p-3">Supplier / Vendor</th>
+                <th class="p-3">Vendor Invoice #</th>
+                <th class="p-3">Items Received</th>
+                <th class="p-3 pr-4 text-right">Total Purchase Amount</th>
+              </tr>
+            </thead>
+            <tbody id="inv-inward-table-body" class="divide-y divide-[#F6F2EC]">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PANE 4: KITCHEN WASTAGE & SPOILAGE -->
+      <div id="inv-pane-wastage" class="inv-pane flex flex-col gap-4 hidden">
+        <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-[#E5DDD3]">
+          <div>
+            <h2 class="text-base font-extrabold text-[#171717]">Kitchen Wastage & Spoilage Log</h2>
+            <p class="text-xs text-[#5C534B]">Track expired items, burnt patties, dropped buns and quantify monetary kitchen loss.</p>
+          </div>
+          <button onclick="openStockWastageModal()" class="btn-primary !min-h-[36px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 !bg-red-700 hover:!bg-red-800">
+            <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Log Kitchen Waste
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[#E5DDD3] overflow-hidden shadow-sm">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-[#FCFAF8] text-[#5C534B] uppercase font-bold border-b border-[#E5DDD3]">
+              <tr>
+                <th class="p-3 pl-4">Date / Time</th>
+                <th class="p-3">Raw Material Item</th>
+                <th class="p-3 text-center">Wasted Qty</th>
+                <th class="p-3">Reason</th>
+                <th class="p-3">Reported By</th>
+                <th class="p-3 text-right">Cost Loss</th>
+                <th class="p-3 pr-4">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="inv-wastage-table-body" class="divide-y divide-[#F6F2EC]">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PANE 5: PHYSICAL STOCK AUDIT & RECONCILIATION -->
+      <div id="inv-pane-audit" class="inv-pane flex flex-col gap-4 hidden">
+        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col gap-4">
+          <div>
+            <h2 class="text-base font-extrabold text-[#171717]">Physical Count Reconciliation</h2>
+            <p class="text-xs text-[#5C534B]">Compare physical kitchen stock against system recorded stock to spot variance and shrinkages.</p>
+          </div>
+
+          <!-- Audit Form Card -->
+          <form id="stock-audit-form" onsubmit="submitStockReconciliation(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 rounded-xl bg-[#FCFAF8] border border-[#E5DDD3] items-end">
+            <div>
+              <label class="block text-xs font-bold text-[#5C534B] mb-1">Select Ingredient</label>
+              <select id="audit-item-select" onchange="onAuditItemSelected(this.value)" required class="w-full py-2 px-3 bg-white border border-[#E5DDD3] rounded-lg text-xs font-semibold focus:outline-none">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-[#5C534B] mb-1">Physical Count</label>
+              <div class="flex items-center">
+                <input type="number" id="audit-physical-qty" step="any" min="0" required oninput="calculateAuditVariancePreview()"
+                  class="w-full py-2 px-3 bg-white border border-[#E5DDD3] rounded-l-lg text-xs font-mono font-bold focus:outline-none">
+                <span id="audit-uom-label" class="py-2 px-2.5 bg-stone-100 border border-l-0 border-[#E5DDD3] rounded-r-lg text-xs font-bold text-[#5C534B]">pcs</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-[#5C534B] mb-1">Variance Preview</label>
+              <div id="audit-variance-preview" class="py-2 px-3 rounded-lg border border-[#E5DDD3] bg-white font-mono font-bold text-xs text-stone-500">
+                System: -- | Diff: --
+              </div>
+            </div>
+            <div>
+              <button type="submit" class="btn-primary w-full !min-h-[38px] !text-xs font-bold">
+                Reconcile & Update Stock
+              </button>
+            </div>
+          </form>
+
+          <!-- Audit Log Trail -->
+          <div class="border border-[#E5DDD3] rounded-xl overflow-hidden mt-2">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-[#FCFAF8] text-[#5C534B] uppercase font-bold border-b border-[#E5DDD3]">
+                <tr>
+                  <th class="p-2.5 pl-3">Audit Date</th>
+                  <th class="p-2.5">Item Name</th>
+                  <th class="p-2.5 text-center">System Stock</th>
+                  <th class="p-2.5 text-center">Physical Count</th>
+                  <th class="p-2.5 text-center">Variance</th>
+                  <th class="p-2.5 text-right">Variance Value</th>
+                  <th class="p-2.5 pr-3">Audited By / Reason</th>
+                </tr>
+              </thead>
+              <tbody id="inv-audit-table-body" class="divide-y divide-[#F6F2EC]">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1790,6 +2123,232 @@
       </div>
     </div>
 
+    <!-- MODAL 13: RAW MATERIAL ITEM ADD / EDIT -->
+    <div id="inv-item-modal" class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-lg w-full p-6 flex flex-col shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-3">
+          <h3 class="text-base font-extrabold text-[#171717]" id="inv-item-modal-title">Add Raw Material</h3>
+          <button type="button" onclick="closeAddInventoryItemModal()" class="w-8 h-8 rounded-lg hover:bg-[#F6F2EC] flex items-center justify-center text-[#5C534B]">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+
+        <form id="inv-item-form" onsubmit="saveInventoryItemForm(event)" class="mt-4 flex flex-col gap-3.5 text-xs">
+          <input type="hidden" id="inv-item-id">
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Material / Ingredient Name *</label>
+            <input type="text" id="inv-item-name" required placeholder="e.g. Sesame Burger Buns" 
+              class="w-full p-2.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-semibold">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">SKU / Item Code *</label>
+              <input type="text" id="inv-item-code" required placeholder="e.g. BUN-01" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-mono font-bold uppercase">
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Category *</label>
+              <select id="inv-item-category" required class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-semibold">
+                <option value="Bakery">Bakery</option>
+                <option value="Poultry & Meat">Poultry & Meat</option>
+                <option value="Dairy">Dairy</option>
+                <option value="Produce">Produce</option>
+                <option value="Sauces & Condiments">Sauces & Condiments</option>
+                <option value="Beverages & Syrups">Beverages & Syrups</option>
+                <option value="Packaging">Packaging</option>
+                <option value="General">General</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Unit (UOM) *</label>
+              <select id="inv-item-uom" required class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-bold">
+                <option value="pcs">Pieces (pcs)</option>
+                <option value="kg">Kilograms (kg)</option>
+                <option value="gm">Grams (gm)</option>
+                <option value="ltr">Liters (ltr)</option>
+                <option value="ml">Milliliters (ml)</option>
+                <option value="pkts">Packets (pkts)</option>
+                <option value="boxes">Boxes (boxes)</option>
+                <option value="cans">Cans (cans)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Current Stock *</label>
+              <input type="number" id="inv-item-stock" min="0" step="any" required placeholder="0" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-mono font-bold">
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Reorder Level *</label>
+              <input type="number" id="inv-item-min-stock" min="0" step="any" required placeholder="5" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-mono font-bold">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Unit Cost Price (₹) *</label>
+              <input type="number" id="inv-item-cost" min="0" step="0.01" required placeholder="0.00" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-mono font-bold">
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Primary Supplier / Vendor</label>
+              <input type="text" id="inv-item-supplier" placeholder="e.g. Apex Cold Chain" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-semibold">
+            </div>
+          </div>
+
+          <div class="flex gap-2 justify-end mt-4 pt-3 border-t border-[#E5DDD3]">
+            <button type="button" onclick="closeAddInventoryItemModal()" class="btn-secondary !min-h-[38px] !px-4">Cancel</button>
+            <button type="submit" class="btn-primary !min-h-[38px] !px-6">Save Raw Material</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL 14: PURCHASE INWARD (GRN) ENTRY -->
+    <div id="inv-inward-modal" class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-2xl w-full p-6 flex flex-col shadow-2xl max-h-[92vh] overflow-hidden">
+        <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+              <span class="material-symbols-outlined text-[20px]">local_shipping</span>
+            </span>
+            <div>
+              <h3 class="text-base font-extrabold text-[#171717]">Record Purchase Inward (GRN)</h3>
+              <p class="text-[11px] text-[#5C534B]">Receive vendor shipments & replenish raw materials</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeStockInwardModal()" class="w-8 h-8 rounded-lg hover:bg-[#F6F2EC] flex items-center justify-center text-[#5C534B]">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+
+        <form id="inv-inward-form" onsubmit="saveStockInwardForm(event)" class="mt-4 flex flex-col gap-3.5 text-xs flex-1 overflow-hidden">
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Supplier / Vendor *</label>
+              <input type="text" id="inward-supplier" required placeholder="e.g. Apex Cold Chain" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-semibold">
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Vendor Invoice # *</label>
+              <input type="text" id="inward-invoice-no" required placeholder="e.g. INV-2026-402" 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-mono font-bold uppercase">
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Receipt Date *</label>
+              <input type="date" id="inward-date" required 
+                class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-bold">
+            </div>
+          </div>
+
+          <!-- Items Row Builder -->
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-[#E5DDD3]">
+            <span class="font-bold text-[#171717]">Received Materials Lines:</span>
+            <button type="button" onclick="addInwardItemRow()" class="px-2.5 py-1 bg-stone-100 hover:bg-[#171717] hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">add</span> Add Item Line
+            </button>
+          </div>
+
+          <div id="inward-items-rows-container" class="flex-1 overflow-y-auto max-h-56 flex flex-col gap-2 p-1">
+            <!-- Dynamic rows inserted here -->
+          </div>
+
+          <!-- Total Inward Footer -->
+          <div class="pt-3 border-t border-[#E5DDD3] flex items-center justify-between mt-auto">
+            <div>
+              <span class="text-xs font-bold text-[#5C534B]">Total Purchase Cost:</span>
+              <span id="inward-grand-total" class="text-lg font-mono font-extrabold text-[#171717] ml-2">₹0.00</span>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" onclick="closeStockInwardModal()" class="btn-secondary !min-h-[38px] !px-4">Cancel</button>
+              <button type="submit" class="btn-primary !min-h-[38px] !px-6">Save Inward Shipment</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL 15: KITCHEN WASTAGE & SPOILAGE LOG -->
+    <div id="inv-waste-modal" class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between border-b border-[#E5DDD3] pb-3">
+          <div class="flex items-center gap-2 text-red-700">
+            <span class="material-symbols-outlined text-[24px]">delete_sweep</span>
+            <div>
+              <h3 class="text-base font-extrabold text-[#171717]">Record Kitchen Wastage</h3>
+              <p class="text-[11px] text-[#5C534B]">Track discarded food, expired stock & quantify loss</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeStockWastageModal()" class="w-8 h-8 rounded-lg hover:bg-[#F6F2EC] flex items-center justify-center text-[#5C534B]">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+
+        <form id="inv-waste-form" onsubmit="saveStockWastageForm(event)" class="mt-4 flex flex-col gap-3.5 text-xs">
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Select Raw Material *</label>
+            <select id="waste-item-select" onchange="onWasteItemSelected(this.value)" required 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-semibold">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Wasted Quantity *</label>
+              <div class="flex items-center">
+                <input type="number" id="waste-qty" min="0.001" step="any" required placeholder="0" oninput="calculateWasteLossPreview()"
+                  class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-l-xl focus:bg-white focus:outline-none font-mono font-bold">
+                <span id="waste-uom-label" class="p-2 bg-stone-100 border border-l-0 border-[#E5DDD3] rounded-r-xl text-xs font-bold text-[#5C534B]">pcs</span>
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold text-[#5C534B] mb-1">Wastage Reason *</label>
+              <select id="waste-reason" required class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-semibold">
+                <option value="Expired / Shelf Life">Expired / Shelf Life</option>
+                <option value="Burnt / Kitchen Error">Burnt / Kitchen Error</option>
+                <option value="Dropped / Damaged">Dropped / Damaged</option>
+                <option value="Spoiled / Raw Quality Issue">Spoiled / Raw Quality Issue</option>
+                <option value="Customer Return / Replaced">Customer Return / Replaced</option>
+                <option value="Tasting / Quality Audit">Tasting / Quality Audit</option>
+                <option value="Spillage / Evaporation">Spillage / Evaporation</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Reported By</label>
+            <input type="text" id="waste-reported-by" placeholder="e.g. Head Chef / Cashier" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none font-semibold">
+          </div>
+
+          <div>
+            <label class="block font-bold text-[#5C534B] mb-1">Notes / Description</label>
+            <input type="text" id="waste-note" placeholder="e.g. Dropped from tray during rush hour" 
+              class="w-full p-2 bg-[#F6F2EC] border border-[#E5DDD3] rounded-xl focus:bg-white focus:outline-none">
+          </div>
+
+          <div id="waste-loss-preview" class="p-3 bg-red-50 rounded-xl border border-red-200 text-xs font-mono font-bold text-red-800 flex items-center justify-between">
+            <span>Estimated Financial Loss:</span>
+            <span id="waste-loss-amt">₹0.00</span>
+          </div>
+
+          <div class="flex gap-2 justify-end mt-2 pt-2 border-t border-[#E5DDD3]">
+            <button type="button" onclick="closeStockWastageModal()" class="btn-secondary !min-h-[38px] !px-4">Cancel</button>
+            <button type="submit" class="btn-primary !min-h-[38px] !px-5 !bg-red-700 hover:!bg-red-800">
+              Record Wastage
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </main>
 
   <!-- PRINTABLE HIDDEN SECTION FOR PHYSICAL THERMAL PRINTING -->
@@ -1804,7 +2363,8 @@
   <script src="src/core/storage.js"></script>
   <script src="src/core/escpos.js"></script>
   <script src="src/core/qr.js"></script>
+  <script src="src/core/inventory.js"></script>
   <script src="src/data/defaultCatalog.js"></script>
-  <script src="app.js?v=3.2.0"></script>
+  <script src="app.js?v=3.3.0"></script>
 </body>
 </html>

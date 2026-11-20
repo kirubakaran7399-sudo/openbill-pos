@@ -43,6 +43,34 @@ window.addEventListener("DOMContentLoaded", () => {
   window.editProduct = editProduct;
   window.deleteProduct = deleteProduct;
 
+  // Expose Inventory triggers
+  window.openAddInventoryItemModal = openAddInventoryItemModal;
+  window.closeAddInventoryItemModal = closeAddInventoryItemModal;
+  window.saveInventoryItemForm = saveInventoryItemForm;
+  window.deleteInventoryItem = deleteInventoryItem;
+  window.quickAdjustRawMaterialStock = quickAdjustRawMaterialStock;
+  window.openStockInwardModal = openStockInwardModal;
+  window.closeStockInwardModal = closeStockInwardModal;
+  window.addInwardItemRow = addInwardItemRow;
+  window.removeInwardItemRow = removeInwardItemRow;
+  window.updateInwardGrandTotalPreview = updateInwardGrandTotalPreview;
+  window.saveStockInwardForm = saveStockInwardForm;
+  window.openStockWastageModal = openStockWastageModal;
+  window.closeStockWastageModal = closeStockWastageModal;
+  window.onWasteItemSelected = onWasteItemSelected;
+  window.calculateWasteLossPreview = calculateWasteLossPreview;
+  window.saveStockWastageForm = saveStockWastageForm;
+  window.exportInventoryCSVDownload = exportInventoryCSVDownload;
+  window.switchInventorySubtab = switchInventorySubtab;
+  window.renderInventoryItemsTable = renderInventoryItemsTable;
+  window.loadSampleInventoryData = loadSampleInventoryData;
+  window.onRecipeDishSelected = onRecipeDishSelected;
+  window.addIngredientToCurrentRecipe = addIngredientToCurrentRecipe;
+  window.removeIngredientFromRecipe = removeIngredientFromRecipe;
+  window.onAuditItemSelected = onAuditItemSelected;
+  window.calculateAuditVariancePreview = calculateAuditVariancePreview;
+  window.submitStockReconciliation = submitStockReconciliation;
+
   const custBtn = document.getElementById("pos-customer-btn");
   if (custBtn) {
     custBtn.addEventListener("click", (e) => {
@@ -95,6 +123,25 @@ function initAppState() {
     appState.dailyTokenCounter = 1;
     saveAppState();
   }
+
+  // Ensure inventory collections exist
+  const invEngine = (typeof PosInventory !== "undefined" && PosInventory)
+    ? PosInventory
+    : (typeof window !== "undefined" && window.PosInventory ? window.PosInventory : null);
+
+  if (!Array.isArray(appState.inventory)) {
+    appState.inventory = (appState.products && appState.products.length > 0 && invEngine)
+      ? [...invEngine.SAMPLE_INVENTORY_ITEMS]
+      : [];
+  }
+  if (!Array.isArray(appState.recipes)) {
+    appState.recipes = (appState.products && appState.products.length > 0 && invEngine)
+      ? [...invEngine.SAMPLE_RECIPES]
+      : [];
+  }
+  if (!Array.isArray(appState.purchaseInwards)) appState.purchaseInwards = [];
+  if (!Array.isArray(appState.wastageLogs)) appState.wastageLogs = [];
+  if (!Array.isArray(appState.stockAudits)) appState.stockAudits = [];
 
   // Set default logged in staff (Owner)
   currentUser = appState.staff[0];
@@ -213,8 +260,8 @@ function setupLiveClock() {
  * Screen routing.
  */
 function navigateTo(viewName) {
-  // Check permission for restricted screens: Reports, Menu, Settings need Owner
-  if (["reports", "menu", "settings"].includes(viewName)) {
+  // Check permission for restricted screens: Reports, Menu, Settings, Inventory need Owner
+  if (["reports", "menu", "settings", "inventory"].includes(viewName)) {
     if (!PosAuth.checkRolePermission(currentUser.role, "owner")) {
       requestOwnerElevation(`Access ${viewName.toUpperCase()} section`, () => {
         doNavigate(viewName);
@@ -260,6 +307,8 @@ function doNavigate(viewName) {
     renderCRMDirectory();
   } else if (viewName === "menu") {
     renderMenuManager();
+  } else if (viewName === "inventory") {
+    renderInventoryView();
   } else if (viewName === "settings") {
     loadSettingsForm();
   } else if (viewName === "pos") {
@@ -283,6 +332,20 @@ function updateHeaderBadges() {
     tableBadge.classList.remove("hidden");
   } else {
     tableBadge.classList.add("hidden");
+  }
+
+  // Inventory low stock alert badge
+  const lowInvCount = (typeof PosInventory !== "undefined" && Array.isArray(appState?.inventory))
+    ? PosInventory.getLowStockItems(appState.inventory).length
+    : 0;
+  const invBadge = document.getElementById("header-inventory-alert-badge");
+  if (invBadge) {
+    if (lowInvCount > 0) {
+      invBadge.textContent = lowInvCount;
+      invBadge.classList.remove("hidden");
+    } else {
+      invBadge.classList.add("hidden");
+    }
   }
 
   // Home launcher badge
@@ -1442,6 +1505,14 @@ function executePaymentAndPrint() {
   // Decrement critical stock for tracked items
   decrementSoldProductStock(billRecord.items);
 
+  // Deduct raw material stock via Recipe BOM (if defined)
+  if (typeof PosInventory !== "undefined" && Array.isArray(appState.inventory) && Array.isArray(appState.recipes)) {
+    const res = PosInventory.deductRecipeStock(appState.inventory, appState.recipes, billRecord.items);
+    if (res && res.updatedInventory) {
+      appState.inventory = res.updatedInventory;
+    }
+  }
+
   // Add to ledger
   if (!appState.salesLedger) appState.salesLedger = [];
   appState.salesLedger.unshift(billRecord);
@@ -1631,6 +1702,14 @@ function settleNCBill(reason) {
 
   // Decrement critical stock for tracked items
   decrementSoldProductStock(billRecord.items);
+
+  // Deduct raw material stock via Recipe BOM (if defined)
+  if (typeof PosInventory !== "undefined" && Array.isArray(appState.inventory) && Array.isArray(appState.recipes)) {
+    const res = PosInventory.deductRecipeStock(appState.inventory, appState.recipes, billRecord.items);
+    if (res && res.updatedInventory) {
+      appState.inventory = res.updatedInventory;
+    }
+  }
 
   // Add to sales ledger
   if (!appState.salesLedger) appState.salesLedger = [];
@@ -2124,10 +2203,33 @@ function executeCancelBill() {
   bill.cancelledAt = new Date().toISOString();
   bill.cancelledBy = "Owner";
 
+  // Restore critical stock for tracked items
+  if (Array.isArray(bill.items) && Array.isArray(appState.products)) {
+    bill.items.forEach(cartItem => {
+      const prod = appState.products.find(p => p.id === cartItem.id);
+      if (prod && prod.trackStock) {
+        prod.stockQty = (prod.stockQty || 0) + (cartItem.qty || 1);
+      }
+    });
+  }
+
+  // Restore raw material stock via Recipe BOM (if defined)
+  if (typeof PosInventory !== "undefined" && Array.isArray(appState.inventory) && Array.isArray(appState.recipes)) {
+    const res = PosInventory.restoreRecipeStock(appState.inventory, appState.recipes, bill.items);
+    if (Array.isArray(res)) {
+      appState.inventory = res;
+    } else if (res && res.updatedInventory) {
+      appState.inventory = res.updatedInventory;
+    }
+  }
+
   saveAppState();
   closeCancelBillModal();
   renderBillHistory();
   refreshHomeStats();
+  renderPosItems();
+  updateHeaderStockBadge();
+  updateHeaderBadges();
 
   alert(`Tax Invoice ${cancelTargetBillNo} has been marked CANCELLED. Excluded from sales reports.`);
 }
@@ -2901,16 +3003,22 @@ function deleteProduct(productId) {
 }
 
 function loadSampleCatalogData() {
-  if (confirm("Load official The Retro Cafeteria sample menu and floor tables?")) {
+  if (confirm("Load official The Retro Cafeteria sample menu, floor tables, and raw material inventory?")) {
     appState.categories = [...PosCatalog.SAMPLE_CATEGORIES];
     appState.products = [...PosCatalog.SAMPLE_PRODUCTS];
     appState.tables = [...PosCatalog.SAMPLE_TABLES];
+    if (typeof PosInventory !== "undefined") {
+      appState.inventory = [...PosInventory.SAMPLE_INVENTORY_ITEMS];
+      appState.recipes = [...PosInventory.SAMPLE_RECIPES];
+    }
     saveAppState();
     renderPosCategories();
     renderPosItems();
     renderMenuManager();
     renderTablesGrid();
-    alert("The Retro Cafeteria sample menu loaded successfully!");
+    updateHeaderStockBadge();
+    updateHeaderBadges();
+    alert("The Retro Cafeteria sample menu and inventory loaded successfully!");
   }
 }
 
@@ -3717,4 +3825,1128 @@ function refillAllStock(addQty) {
   renderStockTable();
   renderPosItems();
   updateHeaderStockBadge();
+}
+
+// -------------------------------------------------------------
+// INVENTORY & KITCHEN RAW MATERIALS MANAGEMENT (REA Optimized)
+// -------------------------------------------------------------
+
+let currentInventorySubtab = "items";
+let selectedRecipeDishId = null;
+
+/**
+ * Switches the active subtab in the Inventory view.
+ */
+function switchInventorySubtab(tabName) {
+  currentInventorySubtab = tabName || "items";
+  const tabs = ["items", "recipes", "inward", "wastage", "audit"];
+
+  tabs.forEach(t => {
+    const btn = document.getElementById(`subtab-inv-${t}`);
+    const pane = document.getElementById(`inv-pane-${t}`);
+
+    if (btn) {
+      if (t === currentInventorySubtab) {
+        btn.className = "inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#171717] text-white shadow-sm whitespace-nowrap";
+      } else {
+        btn.className = "inv-subtab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-[#5C534B] hover:text-[#171717] hover:bg-stone-100 whitespace-nowrap";
+      }
+    }
+
+    if (pane) {
+      if (t === currentInventorySubtab) {
+        pane.classList.remove("hidden");
+      } else {
+        pane.classList.add("hidden");
+      }
+    }
+  });
+
+  // Render content of active subtab
+  if (currentInventorySubtab === "items") {
+    renderInventoryItemsTable();
+  } else if (currentInventorySubtab === "recipes") {
+    renderInventoryRecipesView();
+  } else if (currentInventorySubtab === "inward") {
+    renderInventoryInwardTable();
+  } else if (currentInventorySubtab === "wastage") {
+    renderInventoryWastageTable();
+  } else if (currentInventorySubtab === "audit") {
+    renderInventoryAuditView();
+  }
+}
+
+/**
+ * Main render function for the Inventory screen.
+ */
+function renderInventoryView() {
+  if (!Array.isArray(appState.inventory)) appState.inventory = [];
+  if (!Array.isArray(appState.recipes)) appState.recipes = [];
+  if (!Array.isArray(appState.purchaseInwards)) appState.purchaseInwards = [];
+  if (!Array.isArray(appState.wastageLogs)) appState.wastageLogs = [];
+  if (!Array.isArray(appState.stockAudits)) appState.stockAudits = [];
+
+  updateInventoryKPIs();
+  switchInventorySubtab(currentInventorySubtab);
+}
+
+/**
+ * Updates the 4 key inventory metric cards.
+ */
+function updateInventoryKPIs() {
+  const metrics = typeof PosInventory !== "undefined"
+    ? PosInventory.calculateInventoryValuation(appState.inventory)
+    : { totalValuation: 0, totalItems: 0, lowStockCount: 0 };
+  const valuation = metrics.totalValuation || 0;
+  const totalItems = (appState.inventory || []).length;
+  const lowStockCount = metrics.lowStockCount !== undefined ? metrics.lowStockCount : 0;
+
+  // Calculate today's kitchen wastage loss
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayWasteLoss = (appState.wastageLogs || [])
+    .filter(log => log && log.date && log.date.slice(0, 10) === todayStr)
+    .reduce((sum, log) => sum + (log.lossCost || 0), 0);
+
+  const valEl = document.getElementById("inv-kpi-total-val");
+  const countEl = document.getElementById("inv-kpi-total-items");
+  const lowEl = document.getElementById("inv-kpi-low-stock");
+  const wasteEl = document.getElementById("inv-kpi-waste-cost");
+
+  if (valEl) valEl.textContent = `₹${valuation.toFixed(2)}`;
+  if (countEl) countEl.textContent = totalItems;
+  if (lowEl) lowEl.textContent = lowStockCount;
+  if (wasteEl) wasteEl.textContent = `₹${todayWasteLoss.toFixed(2)}`;
+
+  updateHeaderBadges();
+}
+
+/**
+ * Renders the Raw Materials & Stock Table with search & filters.
+ */
+function renderInventoryItemsTable() {
+  const tbody = document.getElementById("inv-items-table-body");
+  if (!tbody) return;
+
+  const searchInput = document.getElementById("inv-search-input");
+  const catFilter = document.getElementById("inv-cat-filter");
+  const statusFilter = document.getElementById("inv-status-filter");
+  const countLabel = document.getElementById("inv-table-count-label");
+
+  const query = (searchInput?.value || "").trim().toLowerCase();
+  const selectedCat = catFilter?.value || "all";
+  const selectedStatus = statusFilter?.value || "all";
+
+  let items = [...(appState.inventory || [])];
+
+  if (query) {
+    items = items.filter(i =>
+      (i.name && i.name.toLowerCase().includes(query)) ||
+      (i.code && i.code.toLowerCase().includes(query)) ||
+      (i.supplier && i.supplier.toLowerCase().includes(query))
+    );
+  }
+
+  if (selectedCat !== "all") {
+    items = items.filter(i => i.category === selectedCat);
+  }
+
+  if (selectedStatus === "low") {
+    items = items.filter(i => (i.stockQty || 0) <= (i.minStockLevel || 0));
+  } else if (selectedStatus === "out") {
+    items = items.filter(i => (i.stockQty || 0) <= 0);
+  }
+
+  if (countLabel) {
+    countLabel.textContent = `Showing ${items.length} of ${appState.inventory.length} materials`;
+  }
+
+  if (items.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9" class="p-8 text-center text-[#5C534B]">
+          <div class="flex flex-col items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[36px] text-stone-300">inventory_2</span>
+            <p class="font-bold text-sm">No raw materials found</p>
+            <p class="text-xs text-stone-400">Click "Add Raw Material" above or load the official sample ingredients.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = items.map(item => {
+    const isOut = (item.stockQty || 0) <= 0;
+    const isLow = !isOut && (item.stockQty || 0) <= (item.minStockLevel || 0);
+
+    let statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Adequate</span>`;
+    if (isOut) {
+      statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200 animate-pulse">Out of Stock</span>`;
+    } else if (isLow) {
+      statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Reorder Soon</span>`;
+    }
+
+    const valuation = ((item.stockQty || 0) * (item.unitCost || 0)).toFixed(2);
+
+    return `
+      <tr class="hover:bg-[#FCFAF8] transition-colors border-b border-[#F6F2EC]">
+        <td class="p-3 pl-4">
+          <div class="font-bold text-[#171717]">${escapeHtml(item.name)}</div>
+          <div class="text-[10px] font-mono text-[#5C534B] flex items-center gap-1.5 mt-0.5">
+            <span class="bg-stone-100 px-1.5 py-0.2 rounded font-semibold text-[#171717]">${escapeHtml(item.code)}</span>
+            ${item.supplier ? `<span>• ${escapeHtml(item.supplier)}</span>` : ""}
+          </div>
+        </td>
+        <td class="p-3 text-[#5C534B] font-semibold">${escapeHtml(item.category || "General")}</td>
+        <td class="p-3 text-center font-mono font-extrabold ${isOut ? 'text-red-700' : isLow ? 'text-amber-700' : 'text-[#171717]'}">
+          ${item.stockQty} <span class="text-[10px] font-bold text-stone-400">${item.uom}</span>
+        </td>
+        <td class="p-3 text-center font-mono text-[#5C534B]">
+          ${item.minStockLevel} <span class="text-[10px] font-bold text-stone-400">${item.uom}</span>
+        </td>
+        <td class="p-3 text-right font-mono font-bold text-[#171717]">₹${(item.unitCost || 0).toFixed(2)}</td>
+        <td class="p-3 text-right font-mono font-extrabold text-[#6B4226]">₹${valuation}</td>
+        <td class="p-3 text-center">${statusBadge}</td>
+        <td class="p-3 text-center">
+          <div class="inline-flex items-center gap-1 bg-[#F6F2EC] p-0.5 rounded-lg border border-[#E5DDD3]">
+            <button onclick="quickAdjustRawMaterialStock('${item.id}', -5)" title="Minus 5" class="w-6 h-6 rounded bg-white hover:bg-stone-200 font-mono font-bold text-[11px] text-stone-600 flex items-center justify-center">-5</button>
+            <button onclick="quickAdjustRawMaterialStock('${item.id}', -1)" title="Minus 1" class="w-6 h-6 rounded bg-white hover:bg-stone-200 font-mono font-bold text-[11px] text-stone-600 flex items-center justify-center">-1</button>
+            <button onclick="quickAdjustRawMaterialStock('${item.id}', 1)" title="Plus 1" class="w-6 h-6 rounded bg-white hover:bg-stone-200 font-mono font-bold text-[11px] text-stone-600 flex items-center justify-center">+1</button>
+            <button onclick="quickAdjustRawMaterialStock('${item.id}', 5)" title="Plus 5" class="w-6 h-6 rounded bg-white hover:bg-stone-200 font-mono font-bold text-[11px] text-stone-600 flex items-center justify-center">+5</button>
+          </div>
+        </td>
+        <td class="p-3 pr-4 text-right">
+          <div class="flex items-center justify-end gap-1.5">
+            <button onclick="openStockWastageModal('${item.id}')" title="Log Kitchen Wastage" class="w-7 h-7 rounded-lg hover:bg-red-50 text-red-600 flex items-center justify-center transition-colors">
+              <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+            </button>
+            <button onclick="openAddInventoryItemModal('${item.id}')" title="Edit Raw Material" class="w-7 h-7 rounded-lg hover:bg-stone-100 text-[#5C534B] hover:text-[#171717] flex items-center justify-center transition-colors">
+              <span class="material-symbols-outlined text-[16px]">edit</span>
+            </button>
+            <button onclick="deleteInventoryItem('${item.id}')" title="Delete Raw Material" class="w-7 h-7 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-700 flex items-center justify-center transition-colors">
+              <span class="material-symbols-outlined text-[16px]">delete</span>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+/**
+ * Opens modal to Add or Edit a Raw Material item.
+ */
+function openAddInventoryItemModal(editId) {
+  const modal = document.getElementById("inv-item-modal");
+  const title = document.getElementById("inv-item-modal-title");
+  const form = document.getElementById("inv-item-form");
+
+  if (!modal || !form) return;
+
+  if (editId) {
+    const item = (appState.inventory || []).find(i => i.id === editId);
+    if (!item) return;
+
+    if (title) title.textContent = "Edit Raw Material";
+    document.getElementById("inv-item-id").value = item.id;
+    document.getElementById("inv-item-name").value = item.name || "";
+    document.getElementById("inv-item-code").value = item.code || "";
+    document.getElementById("inv-item-category").value = item.category || "General";
+    document.getElementById("inv-item-uom").value = item.uom || "pcs";
+    document.getElementById("inv-item-stock").value = item.stockQty !== undefined ? item.stockQty : 0;
+    document.getElementById("inv-item-min-stock").value = item.minStockLevel !== undefined ? item.minStockLevel : 5;
+    document.getElementById("inv-item-cost").value = item.unitCost !== undefined ? item.unitCost : 0;
+    document.getElementById("inv-item-supplier").value = item.supplier || "";
+  } else {
+    if (title) title.textContent = "Add Raw Material";
+    form.reset();
+    document.getElementById("inv-item-id").value = "";
+    document.getElementById("inv-item-category").value = "General";
+    document.getElementById("inv-item-uom").value = "pcs";
+    document.getElementById("inv-item-stock").value = "0";
+    document.getElementById("inv-item-min-stock").value = "5";
+    document.getElementById("inv-item-cost").value = "0.00";
+  }
+
+  modal.classList.remove("hidden");
+  document.getElementById("inv-item-name").focus();
+}
+
+/**
+ * Closes Add/Edit Raw Material modal.
+ */
+function closeAddInventoryItemModal() {
+  const modal = document.getElementById("inv-item-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+/**
+ * Handles form submission for adding or editing a Raw Material item.
+ */
+function saveInventoryItemForm(e) {
+  e.preventDefault();
+
+  const id = document.getElementById("inv-item-id").value.trim();
+  const name = document.getElementById("inv-item-name").value.trim();
+  const code = document.getElementById("inv-item-code").value.trim().toUpperCase();
+  const category = document.getElementById("inv-item-category").value;
+  const uom = document.getElementById("inv-item-uom").value;
+  const stockQty = parseFloat(document.getElementById("inv-item-stock").value) || 0;
+  const minStockLevel = parseFloat(document.getElementById("inv-item-min-stock").value) || 0;
+  const unitCost = parseFloat(document.getElementById("inv-item-cost").value) || 0;
+  const supplier = document.getElementById("inv-item-supplier").value.trim();
+
+  if (!name || !code) {
+    alert("Please provide both Material Name and SKU / Item Code.");
+    return;
+  }
+
+  if (!Array.isArray(appState.inventory)) appState.inventory = [];
+
+  if (id) {
+    // Edit existing item
+    const item = appState.inventory.find(i => i.id === id);
+    if (item) {
+      item.name = name;
+      item.code = code;
+      item.category = category;
+      item.uom = uom;
+      item.stockQty = Math.max(0, stockQty);
+      item.minStockLevel = Math.max(0, minStockLevel);
+      item.unitCost = Math.max(0, unitCost);
+      item.supplier = supplier;
+      item.updatedAt = new Date().toISOString();
+    }
+  } else {
+    // Create new item
+    const newItem = typeof PosInventory !== "undefined"
+      ? PosInventory.createInventoryItem({ name, code, category, uom, stockQty, minStockLevel, unitCost, supplier })
+      : {
+          id: `raw_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          name, code, category, uom, stockQty, minStockLevel, unitCost, supplier,
+          createdAt: new Date().toISOString()
+        };
+    appState.inventory.push(newItem);
+  }
+
+  saveAppState();
+  closeAddInventoryItemModal();
+  renderInventoryView();
+}
+
+/**
+ * Deletes a Raw Material item and cleans up linked recipes.
+ */
+function deleteInventoryItem(id) {
+  const item = (appState.inventory || []).find(i => i.id === id);
+  if (!item) return;
+
+  if (confirm(`Delete raw material "${item.name}" (${item.code})?\nThis will also remove this ingredient from any linked dish recipes.`)) {
+    appState.inventory = (appState.inventory || []).filter(i => i.id !== id);
+
+    // Remove from recipes
+    if (Array.isArray(appState.recipes)) {
+      appState.recipes.forEach(r => {
+        if (Array.isArray(r.ingredients)) {
+          r.ingredients = r.ingredients.filter(ing => ing.itemId !== id);
+        }
+      });
+    }
+
+    saveAppState();
+    renderInventoryView();
+  }
+}
+
+/**
+ * Quick adjusts the stock quantity of a raw material by delta (+/-).
+ */
+function quickAdjustRawMaterialStock(id, delta) {
+  const item = (appState.inventory || []).find(i => i.id === id);
+  if (!item) return;
+
+  item.stockQty = Math.max(0, Math.round(((item.stockQty || 0) + delta) * 1000) / 1000);
+  item.updatedAt = new Date().toISOString();
+
+  saveAppState();
+  renderInventoryView();
+}
+
+/**
+ * Renders the Recipe / Bill of Materials (BOM) view.
+ */
+function renderInventoryRecipesView() {
+  const dishSelect = document.getElementById("recipe-dish-select");
+  const rawSelect = document.getElementById("recipe-add-raw-select");
+  const uomLabel = document.getElementById("recipe-add-uom-label");
+  const tbody = document.getElementById("recipe-ingredients-table-body");
+
+  if (!dishSelect || !rawSelect || !tbody) return;
+
+  const products = appState.products || [];
+
+  if (products.length === 0) {
+    dishSelect.innerHTML = `<option value="">No products in catalog</option>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-[#5C534B]">No menu dishes available. Add products to menu first.</td></tr>`;
+    return;
+  }
+
+  // Populate Dish select
+  dishSelect.innerHTML = products.map(p =>
+    `<option value="${p.id}" ${p.id === selectedRecipeDishId ? 'selected' : ''}>${escapeHtml(p.name)} (${escapeHtml(p.shortCode || "ID")}) - ₹${(p.price || 0).toFixed(2)}</option>`
+  ).join("");
+
+  if (!selectedRecipeDishId || !products.some(p => p.id === selectedRecipeDishId)) {
+    selectedRecipeDishId = products[0].id;
+    dishSelect.value = selectedRecipeDishId;
+  }
+
+  // Populate Raw Materials dropdown for adding ingredient
+  const rawItems = appState.inventory || [];
+  if (rawItems.length === 0) {
+    rawSelect.innerHTML = `<option value="">No raw materials created yet</option>`;
+  } else {
+    rawSelect.innerHTML = rawItems.map(item =>
+      `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)}) - ₹${(item.unitCost || 0).toFixed(2)}/${item.uom}</option>`
+    ).join("");
+  }
+
+  // Update UOM label on select change
+  const updateUomLabel = () => {
+    const chosen = rawItems.find(i => i.id === rawSelect.value);
+    if (uomLabel) uomLabel.textContent = chosen ? chosen.uom : "pcs";
+  };
+  rawSelect.onchange = updateUomLabel;
+  updateUomLabel();
+
+  // Find active dish and its recipe
+  const currentDish = products.find(p => p.id === selectedRecipeDishId);
+  const currentRecipe = typeof PosInventory !== "undefined"
+    ? PosInventory.getRecipeForDish(appState.recipes, selectedRecipeDishId)
+    : (appState.recipes || []).find(r => r.dishId === selectedRecipeDishId);
+
+  // Compute Cost & Margin Metrics
+  const calculatedCost = (typeof PosInventory !== "undefined" && currentRecipe)
+    ? PosInventory.calculateRecipeCost(currentRecipe, appState.inventory)
+    : 0;
+  const prepCost = typeof calculatedCost === "number" ? calculatedCost : (calculatedCost?.prepCost || 0);
+
+  const sellingPrice = currentDish ? (currentDish.price || 0) : 0;
+  const margin = sellingPrice - prepCost;
+  const foodCostPct = sellingPrice > 0 ? (prepCost / sellingPrice * 100).toFixed(1) : "0.0";
+
+  const priceEl = document.getElementById("recipe-selling-price");
+  const prepEl = document.getElementById("recipe-prep-cost");
+  const marginEl = document.getElementById("recipe-gross-margin");
+  const pctEl = document.getElementById("recipe-food-cost-pct");
+
+  if (priceEl) priceEl.textContent = `₹${sellingPrice.toFixed(2)}`;
+  if (prepEl) prepEl.textContent = `₹${prepCost.toFixed(2)}`;
+  if (marginEl) {
+    marginEl.textContent = `₹${margin.toFixed(2)}`;
+    marginEl.className = margin >= 0 ? "text-base font-mono font-extrabold text-emerald-700" : "text-base font-mono font-extrabold text-red-700";
+  }
+  if (pctEl) {
+    pctEl.textContent = `${foodCostPct}%`;
+    const numPct = parseFloat(foodCostPct);
+    pctEl.className = numPct > 45 ? "text-base font-mono font-extrabold text-red-700" : numPct > 35 ? "text-base font-mono font-extrabold text-amber-700" : "text-base font-mono font-extrabold text-emerald-700";
+  }
+
+  // Render Ingredients Rows
+  const ingredients = currentRecipe?.ingredients || [];
+
+  if (ingredients.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="p-8 text-center text-[#5C534B]">
+          <div class="flex flex-col items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-[32px] text-stone-300">menu_book</span>
+            <p class="font-bold text-xs">No ingredients mapped to "${escapeHtml(currentDish?.name || 'this dish')}"</p>
+            <p class="text-[11px] text-stone-400">Add raw materials above to enable automatic stock deduction when this dish is billed.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = ingredients.map(ing => {
+    const raw = (appState.inventory || []).find(i => i.id === ing.itemId);
+    const rawName = raw ? raw.name : "Unknown Item";
+    const rawCode = raw ? raw.code : ing.itemId;
+    const rawCat = raw ? raw.category : "General";
+    const rawUom = raw ? raw.uom : "pcs";
+    const unitCost = raw ? (raw.unitCost || 0) : 0;
+    const contribution = (ing.qty * unitCost).toFixed(2);
+
+    return `
+      <tr class="hover:bg-[#FCFAF8] transition-colors border-b border-[#F6F2EC]">
+        <td class="p-2.5 pl-3">
+          <span class="font-bold text-[#171717]">${escapeHtml(rawName)}</span>
+          <span class="ml-1 text-[10px] font-mono font-semibold bg-stone-100 px-1 py-0.5 rounded text-[#5C534B]">${escapeHtml(rawCode)}</span>
+        </td>
+        <td class="p-2.5 text-[#5C534B] font-semibold">${escapeHtml(rawCat)}</td>
+        <td class="p-2.5 text-center font-mono font-bold text-[#171717]">${ing.qty} <span class="text-[10px] text-stone-400">${rawUom}</span></td>
+        <td class="p-2.5 text-right font-mono text-[#5C534B]">₹${unitCost.toFixed(2)}</td>
+        <td class="p-2.5 text-right font-mono font-bold text-[#6B4226]">₹${contribution}</td>
+        <td class="p-2.5 pr-3 text-right">
+          <button onclick="removeIngredientFromRecipe('${ing.itemId}')" title="Remove Ingredient" class="w-6 h-6 rounded hover:bg-red-50 text-stone-400 hover:text-red-700 inline-flex items-center justify-center transition-colors">
+            <span class="material-symbols-outlined text-[15px]">delete</span>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+/**
+ * Handles dish change in Recipe BOM view.
+ */
+function onRecipeDishSelected(dishId) {
+  selectedRecipeDishId = dishId;
+  renderInventoryRecipesView();
+}
+
+/**
+ * Adds an ingredient to the current dish's recipe.
+ */
+function addIngredientToCurrentRecipe() {
+  if (!selectedRecipeDishId) {
+    alert("Please select a menu dish first.");
+    return;
+  }
+
+  const rawSelect = document.getElementById("recipe-add-raw-select");
+  const qtyInput = document.getElementById("recipe-add-qty");
+
+  const itemId = rawSelect?.value;
+  const qty = parseFloat(qtyInput?.value) || 0;
+
+  if (!itemId) {
+    alert("Please select a raw material ingredient.");
+    return;
+  }
+
+  if (qty <= 0) {
+    alert("Please enter a valid quantity greater than zero.");
+    qtyInput?.focus();
+    return;
+  }
+
+  if (!Array.isArray(appState.recipes)) appState.recipes = [];
+
+  let recipe = appState.recipes.find(r => r.dishId === selectedRecipeDishId);
+  if (!recipe) {
+    recipe = { dishId: selectedRecipeDishId, ingredients: [] };
+    appState.recipes.push(recipe);
+  }
+
+  const existing = recipe.ingredients.find(i => i.itemId === itemId);
+  if (existing) {
+    existing.qty = Math.round((existing.qty + qty) * 1000) / 1000;
+  } else {
+    recipe.ingredients.push({ itemId, qty });
+  }
+
+  saveAppState();
+  if (qtyInput) qtyInput.value = "";
+  renderInventoryRecipesView();
+}
+
+/**
+ * Removes an ingredient from the current dish's recipe.
+ */
+function removeIngredientFromRecipe(itemId) {
+  if (!selectedRecipeDishId) return;
+
+  const recipe = (appState.recipes || []).find(r => r.dishId === selectedRecipeDishId);
+  if (recipe && Array.isArray(recipe.ingredients)) {
+    recipe.ingredients = recipe.ingredients.filter(i => i.itemId !== itemId);
+    saveAppState();
+    renderInventoryRecipesView();
+  }
+}
+
+/**
+ * Renders the Purchase Inward (GRN) history table.
+ */
+function renderInventoryInwardTable() {
+  const tbody = document.getElementById("inv-inward-table-body");
+  if (!tbody) return;
+
+  const inwards = appState.purchaseInwards || [];
+
+  if (inwards.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="p-8 text-center text-[#5C534B]">
+          <div class="flex flex-col items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-[32px] text-stone-300">local_shipping</span>
+            <p class="font-bold text-xs">No purchase inwards recorded yet</p>
+            <p class="text-[11px] text-stone-400">Click "New Purchase Entry" above to log vendor shipments and update stock.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = inwards.map(inward => {
+    const itemCount = inward.items ? inward.items.length : 0;
+    const itemsSummary = (inward.items || []).map(it => {
+      const raw = (appState.inventory || []).find(i => i.id === it.itemId);
+      const name = raw ? raw.name : it.itemId;
+      const uom = raw ? raw.uom : "pcs";
+      return `${name} (${it.qty} ${uom})`;
+    }).join(", ");
+
+    return `
+      <tr class="hover:bg-[#FCFAF8] transition-colors border-b border-[#F6F2EC]">
+        <td class="p-3 pl-4">
+          <div class="font-mono font-bold text-[#171717]">${escapeHtml(inward.grnNo || "GRN-")}</div>
+          <div class="text-[10px] text-[#5C534B] mt-0.5">${inward.date || ""}</div>
+        </td>
+        <td class="p-3 font-bold text-[#171717]">${escapeHtml(inward.supplier || "Vendor")}</td>
+        <td class="p-3 font-mono font-semibold text-[#5C534B] uppercase">${escapeHtml(inward.invoiceNo || "-")}</td>
+        <td class="p-3 text-[#5C534B]">
+          <span class="font-bold text-[#171717]">${itemCount} materials:</span>
+          <span class="text-[11px] text-stone-500 line-clamp-1" title="${escapeHtml(itemsSummary)}">${escapeHtml(itemsSummary)}</span>
+        </td>
+        <td class="p-3 pr-4 text-right font-mono font-extrabold text-[#6B4226]">₹${(inward.totalCost || 0).toFixed(2)}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+/**
+ * Opens the modal to record a new Purchase Inward (GRN) shipment.
+ */
+function openStockInwardModal() {
+  const modal = document.getElementById("inv-inward-modal");
+  const form = document.getElementById("inv-inward-form");
+  const container = document.getElementById("inward-items-rows-container");
+
+  if (!modal || !form || !container) return;
+
+  form.reset();
+  document.getElementById("inward-date").value = new Date().toISOString().slice(0, 10);
+  container.innerHTML = "";
+
+  // Add 1 initial row
+  addInwardItemRow();
+  updateInwardGrandTotalPreview();
+
+  modal.classList.remove("hidden");
+  document.getElementById("inward-supplier").focus();
+}
+
+/**
+ * Closes the Purchase Inward modal.
+ */
+function closeStockInwardModal() {
+  const modal = document.getElementById("inv-inward-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+/**
+ * Appends a new item line row inside the Purchase Inward modal.
+ */
+function addInwardItemRow() {
+  const container = document.getElementById("inward-items-rows-container");
+  if (!container) return;
+
+  const rawItems = appState.inventory || [];
+  if (rawItems.length === 0) {
+    alert("Please add at least one raw material in the inventory first.");
+    return;
+  }
+
+  const rowId = `inward_row_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+  const div = document.createElement("div");
+  div.id = rowId;
+  div.className = "flex items-center gap-2 p-2 bg-[#FCFAF8] rounded-xl border border-[#E5DDD3]";
+
+  div.innerHTML = `
+    <select class="inward-row-item-select py-1.5 px-2 bg-white border border-[#E5DDD3] rounded-lg text-xs font-semibold focus:outline-none flex-1" onchange="onInwardRowItemChanged('${rowId}')">
+      ${rawItems.map(item => `<option value="${item.id}" data-cost="${item.unitCost || 0}" data-uom="${item.uom}">${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
+    </select>
+    <div class="flex items-center w-28">
+      <input type="number" step="any" min="0.001" placeholder="Qty" required class="inward-row-qty w-full py-1.5 px-2 bg-white border border-[#E5DDD3] rounded-l-lg text-xs font-mono font-bold focus:outline-none" oninput="updateInwardGrandTotalPreview()">
+      <span class="inward-row-uom-badge py-1.5 px-2 bg-stone-100 border border-l-0 border-[#E5DDD3] rounded-r-lg text-[10px] font-bold text-[#5C534B]">${rawItems[0]?.uom || "pcs"}</span>
+    </div>
+    <div class="flex items-center w-28">
+      <span class="py-1.5 px-1.5 bg-stone-100 border border-r-0 border-[#E5DDD3] rounded-l-lg text-[10px] font-bold text-[#5C534B]">₹</span>
+      <input type="number" step="0.01" min="0" placeholder="Unit Cost" required value="${rawItems[0]?.unitCost || 0}" class="inward-row-cost w-full py-1.5 px-2 bg-white border border-[#E5DDD3] rounded-r-lg text-xs font-mono font-bold focus:outline-none" oninput="updateInwardGrandTotalPreview()">
+    </div>
+    <button type="button" onclick="removeInwardItemRow(this)" title="Remove Line" class="w-7 h-7 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-700 flex items-center justify-center shrink-0">
+      <span class="material-symbols-outlined text-[16px]">close</span>
+    </button>
+  `;
+
+  container.appendChild(div);
+  updateInwardGrandTotalPreview();
+}
+
+/**
+ * Handles selection change in a Purchase Inward item row.
+ */
+function onInwardRowItemChanged(rowId) {
+  const row = document.getElementById(rowId);
+  if (!row) return;
+
+  const select = row.querySelector(".inward-row-item-select");
+  const costInput = row.querySelector(".inward-row-cost");
+  const uomBadge = row.querySelector(".inward-row-uom-badge");
+
+  if (!select) return;
+  const opt = select.options[select.selectedIndex];
+  if (opt) {
+    if (costInput && opt.dataset.cost) costInput.value = opt.dataset.cost;
+    if (uomBadge && opt.dataset.uom) uomBadge.textContent = opt.dataset.uom;
+  }
+  updateInwardGrandTotalPreview();
+}
+
+/**
+ * Removes an item line row in the Purchase Inward modal.
+ */
+function removeInwardItemRow(btn) {
+  const container = document.getElementById("inward-items-rows-container");
+  const row = btn.closest(".flex");
+  if (row) {
+    row.remove();
+    updateInwardGrandTotalPreview();
+  }
+  // Ensure at least one row exists
+  if (container && container.children.length === 0) {
+    addInwardItemRow();
+  }
+}
+
+/**
+ * Recalculates the grand total of the Purchase Inward modal preview.
+ */
+function updateInwardGrandTotalPreview() {
+  const container = document.getElementById("inward-items-rows-container");
+  const totalEl = document.getElementById("inward-grand-total");
+  if (!container || !totalEl) return;
+
+  let total = 0;
+  const rows = container.querySelectorAll(".flex");
+  rows.forEach(row => {
+    const qty = parseFloat(row.querySelector(".inward-row-qty")?.value) || 0;
+    const cost = parseFloat(row.querySelector(".inward-row-cost")?.value) || 0;
+    total += (qty * cost);
+  });
+
+  totalEl.textContent = `₹${total.toFixed(2)}`;
+}
+
+/**
+ * Saves a new Purchase Inward shipment and updates inventory stock & costs.
+ */
+function saveStockInwardForm(e) {
+  e.preventDefault();
+
+  const supplier = document.getElementById("inward-supplier").value.trim();
+  const invoiceNo = document.getElementById("inward-invoice-no").value.trim().toUpperCase();
+  const date = document.getElementById("inward-date").value;
+  const container = document.getElementById("inward-items-rows-container");
+
+  if (!supplier || !invoiceNo || !date) {
+    alert("Please fill in Supplier, Invoice #, and Receipt Date.");
+    return;
+  }
+
+  const items = [];
+  const rows = container.querySelectorAll(".flex");
+  rows.forEach(row => {
+    const itemId = row.querySelector(".inward-row-item-select")?.value;
+    const qty = parseFloat(row.querySelector(".inward-row-qty")?.value) || 0;
+    const unitCost = parseFloat(row.querySelector(".inward-row-cost")?.value) || 0;
+
+    if (itemId && qty > 0) {
+      items.push({ itemId, qty, unitCost });
+    }
+  });
+
+  if (items.length === 0) {
+    alert("Please add at least one material with a quantity greater than zero.");
+    return;
+  }
+
+  if (typeof PosInventory === "undefined") {
+    alert("Inventory core module not loaded.");
+    return;
+  }
+
+  const res = PosInventory.recordStockInward(appState.inventory, { supplier, invoiceNo, date, items });
+  if (res && res.inwardRecord) {
+    if (res.updatedInventory) appState.inventory = res.updatedInventory;
+    const inward = res.inwardRecord;
+    if (!Array.isArray(appState.purchaseInwards)) appState.purchaseInwards = [];
+    appState.purchaseInwards.unshift(inward);
+    if (appState.purchaseInwards.length > 500) appState.purchaseInwards = appState.purchaseInwards.slice(0, 500);
+
+    saveAppState();
+    closeStockInwardModal();
+    renderInventoryView();
+
+    alert(`Purchase Inward ${inward.invoiceNo || "Entry"} recorded successfully!\nStock levels and weighted average unit costs have been updated.`);
+  }
+}
+
+/**
+ * Renders the Kitchen Wastage & Spoilage Log table.
+ */
+function renderInventoryWastageTable() {
+  const tbody = document.getElementById("inv-wastage-table-body");
+  if (!tbody) return;
+
+  const logs = appState.wastageLogs || [];
+
+  if (logs.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="p-8 text-center text-[#5C534B]">
+          <div class="flex flex-col items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-[32px] text-stone-300">delete_sweep</span>
+            <p class="font-bold text-xs">No kitchen wastage recorded yet</p>
+            <p class="text-[11px] text-stone-400">Log spoiled, expired, or dropped food items to maintain accurate stock and financial loss tracking.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = logs.map(log => {
+    const dateFormatted = log.date ? new Date(log.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "-";
+
+    return `
+      <tr class="hover:bg-[#FCFAF8] transition-colors border-b border-[#F6F2EC]">
+        <td class="p-3 pl-4 font-mono text-[11px] text-[#5C534B]">${dateFormatted}</td>
+        <td class="p-3">
+          <div class="font-bold text-[#171717]">${escapeHtml(log.itemName || "Raw Material")}</div>
+          <div class="text-[10px] font-mono text-stone-400">${escapeHtml(log.itemCode || "")}</div>
+        </td>
+        <td class="p-3 text-center font-mono font-bold text-red-700">${log.qty} <span class="text-[10px] text-stone-400">${log.uom || "pcs"}</span></td>
+        <td class="p-3">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-[#171717] border border-stone-200">${escapeHtml(log.reason || "Wastage")}</span>
+        </td>
+        <td class="p-3 text-[#5C534B] font-semibold">${escapeHtml(log.reportedBy || "Staff")}</td>
+        <td class="p-3 text-right font-mono font-extrabold text-red-700">₹${(log.lossCost || 0).toFixed(2)}</td>
+        <td class="p-3 pr-4 text-[11px] text-[#5C534B] italic">${escapeHtml(log.note || "-")}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+/**
+ * Opens the Kitchen Wastage log modal.
+ */
+function openStockWastageModal(preselectedId) {
+  const modal = document.getElementById("inv-waste-modal");
+  const form = document.getElementById("inv-waste-form");
+  const itemSelect = document.getElementById("waste-item-select");
+
+  if (!modal || !form || !itemSelect) return;
+
+  const rawItems = appState.inventory || [];
+  if (rawItems.length === 0) {
+    alert("Please add raw materials to inventory first before logging wastage.");
+    return;
+  }
+
+  form.reset();
+  itemSelect.innerHTML = rawItems.map(item =>
+    `<option value="${item.id}" ${item.id === preselectedId ? 'selected' : ''}>${escapeHtml(item.name)} (${escapeHtml(item.code)}) - Available: ${item.stockQty} ${item.uom}</option>`
+  ).join("");
+
+  document.getElementById("waste-reported-by").value = currentUser ? currentUser.name : "Staff";
+  onWasteItemSelected(itemSelect.value);
+
+  modal.classList.remove("hidden");
+  document.getElementById("waste-qty").focus();
+}
+
+/**
+ * Closes Kitchen Wastage modal.
+ */
+function closeStockWastageModal() {
+  const modal = document.getElementById("inv-waste-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+/**
+ * Handles material selection change in Kitchen Wastage modal.
+ */
+function onWasteItemSelected(id) {
+  const item = (appState.inventory || []).find(i => i.id === id);
+  const uomLabel = document.getElementById("waste-uom-label");
+  if (uomLabel) uomLabel.textContent = item ? item.uom : "pcs";
+  calculateWasteLossPreview();
+}
+
+/**
+ * Computes monetary loss preview for kitchen wastage.
+ */
+function calculateWasteLossPreview() {
+  const itemSelect = document.getElementById("waste-item-select");
+  const qtyInput = document.getElementById("waste-qty");
+  const lossEl = document.getElementById("waste-loss-amt");
+
+  if (!itemSelect || !qtyInput || !lossEl) return;
+
+  const item = (appState.inventory || []).find(i => i.id === itemSelect.value);
+  const qty = parseFloat(qtyInput.value) || 0;
+  const loss = item ? (qty * (item.unitCost || 0)) : 0;
+
+  lossEl.textContent = `₹${loss.toFixed(2)}`;
+}
+
+/**
+ * Saves a kitchen wastage log and deducts stock.
+ */
+function saveStockWastageForm(e) {
+  e.preventDefault();
+
+  const itemId = document.getElementById("waste-item-select").value;
+  const qty = parseFloat(document.getElementById("waste-qty").value) || 0;
+  const reason = document.getElementById("waste-reason").value;
+  const reportedBy = document.getElementById("waste-reported-by").value.trim() || (currentUser ? currentUser.name : "Staff");
+  const note = document.getElementById("waste-note").value.trim();
+
+  if (!itemId || qty <= 0) {
+    alert("Please enter a valid wasted quantity greater than zero.");
+    return;
+  }
+
+  if (typeof PosInventory === "undefined") {
+    alert("Inventory core module not loaded.");
+    return;
+  }
+
+  const res = PosInventory.recordStockWastage(appState.inventory, { itemId, qty, reason, reportedBy, note });
+  if (res && res.wastageRecord) {
+    if (res.updatedInventory) appState.inventory = res.updatedInventory;
+    const log = res.wastageRecord;
+    if (!Array.isArray(appState.wastageLogs)) appState.wastageLogs = [];
+    appState.wastageLogs.unshift(log);
+    if (appState.wastageLogs.length > 500) appState.wastageLogs = appState.wastageLogs.slice(0, 500);
+
+    saveAppState();
+    closeStockWastageModal();
+    renderInventoryView();
+
+    alert(`Wastage logged! Raw material stock deducted by ${qty} ${log.uom}.\nFinancial loss of ₹${log.costLoss.toFixed(2)} recorded.`);
+  }
+}
+
+/**
+ * Renders the Physical Count Audit & Reconciliation view.
+ */
+function renderInventoryAuditView() {
+  const itemSelect = document.getElementById("audit-item-select");
+  const tbody = document.getElementById("inv-audit-table-body") || document.getElementById("stock-audit-table-body");
+  const physicalInput = document.getElementById("audit-physical-qty");
+
+  if (!itemSelect || !tbody) return;
+
+  const rawItems = appState.inventory || [];
+
+  if (rawItems.length === 0) {
+    itemSelect.innerHTML = `<option value="">No raw materials in inventory</option>`;
+  } else {
+    itemSelect.innerHTML = rawItems.map(item =>
+      `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)}) - System Stock: ${item.stockQty} ${item.uom}</option>`
+    ).join("");
+  }
+
+  if (physicalInput) physicalInput.value = "";
+  onAuditItemSelected(itemSelect.value);
+
+  // Render previous audit log history
+  const audits = appState.stockAudits || [];
+
+  if (audits.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="p-8 text-center text-[#5C534B]">
+          <div class="flex flex-col items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-[32px] text-stone-300">fact_check</span>
+            <p class="font-bold text-xs">No physical count reconciliations yet</p>
+            <p class="text-[11px] text-stone-400">Perform periodic kitchen audits to spot shrinkage and align system stock with real counts.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = audits.map(audit => {
+    const isZero = audit.variance === 0;
+    const isLoss = audit.variance < 0;
+    const dateFormatted = audit.date ? new Date(audit.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "-";
+
+    const badge = isZero
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Exact Match</span>`
+      : isLoss
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">${audit.variance} ${audit.uom} Shrinkage</span>`
+      : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">+${audit.variance} ${audit.uom} Surplus</span>`;
+
+    return `
+      <tr class="hover:bg-[#FCFAF8] transition-colors border-b border-[#F6F2EC]">
+        <td class="p-2.5 pl-3 font-mono text-[11px] text-[#5C534B]">${dateFormatted}</td>
+        <td class="p-2.5">
+          <div class="font-bold text-[#171717]">${escapeHtml(audit.itemName || "Item")}</div>
+          <div class="text-[10px] font-mono text-stone-400">${escapeHtml(audit.itemCode || "")}</div>
+        </td>
+        <td class="p-2.5 text-center font-mono text-[#5C534B]">${audit.systemQty} ${audit.uom}</td>
+        <td class="p-2.5 text-center font-mono font-bold text-[#171717]">${audit.physicalQty} ${audit.uom}</td>
+        <td class="p-2.5 text-center font-mono font-extrabold ${isLoss ? 'text-red-700' : isZero ? 'text-emerald-700' : 'text-blue-700'}">${audit.variance > 0 ? '+' : ''}${audit.variance} ${audit.uom}</td>
+        <td class="p-2.5 text-center">${badge}</td>
+        <td class="p-2.5 pr-3 text-right text-[#5C534B] font-semibold">${escapeHtml(audit.auditedBy || "Auditor")}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+/**
+ * Handles selection change in audit item dropdown.
+ */
+function onAuditItemSelected(id) {
+  const item = (appState.inventory || []).find(i => i.id === id);
+  const uomLabel = document.getElementById("audit-uom-label");
+  if (uomLabel) uomLabel.textContent = item ? item.uom : "pcs";
+  calculateAuditVariancePreview();
+}
+
+/**
+ * Updates variance preview in physical audit form.
+ */
+function calculateAuditVariancePreview() {
+  const itemSelect = document.getElementById("audit-item-select");
+  const physicalInput = document.getElementById("audit-physical-qty");
+  const previewEl = document.getElementById("audit-variance-preview");
+
+  if (!itemSelect || !physicalInput || !previewEl) return;
+
+  const item = (appState.inventory || []).find(i => i.id === itemSelect.value);
+  if (!item) {
+    previewEl.innerHTML = `<span class="text-stone-400">System: -- | Diff: --</span>`;
+    return;
+  }
+
+  const rawVal = physicalInput.value.trim();
+  if (rawVal === "") {
+    previewEl.innerHTML = `System: <span class="text-[#171717]">${item.stockQty} ${item.uom}</span> | Diff: <span class="text-stone-400">--</span>`;
+    return;
+  }
+
+  const physical = parseFloat(rawVal) || 0;
+  const system = item.stockQty || 0;
+  const diff = Math.round((physical - system) * 1000) / 1000;
+
+  let colorClass = "text-emerald-700";
+  if (diff < 0) colorClass = "text-red-700";
+  else if (diff > 0) colorClass = "text-blue-700";
+
+  previewEl.innerHTML = `System: <span class="text-[#171717]">${system} ${item.uom}</span> | Diff: <span class="${colorClass} font-extrabold">${diff > 0 ? '+' : ''}${diff} ${item.uom}</span>`;
+}
+
+/**
+ * Handles submission of physical stock count audit.
+ */
+function submitStockReconciliation(e) {
+  e.preventDefault();
+
+  const itemId = document.getElementById("audit-item-select").value;
+  const physicalQty = parseFloat(document.getElementById("audit-physical-qty").value);
+
+  if (!itemId || isNaN(physicalQty) || physicalQty < 0) {
+    alert("Please select a raw material and enter a valid non-negative physical count.");
+    return;
+  }
+
+  if (typeof PosInventory === "undefined") {
+    alert("Inventory core module not loaded.");
+    return;
+  }
+
+  const auditorName = currentUser ? currentUser.name : "Manager";
+  const res = PosInventory.reconcilePhysicalStock(appState.inventory, { itemId, physicalCount: physicalQty, auditedBy: auditorName });
+
+  if (res && res.auditRecord) {
+    if (res.updatedInventory) appState.inventory = res.updatedInventory;
+    const audit = res.auditRecord;
+    if (!Array.isArray(appState.stockAudits)) appState.stockAudits = [];
+    appState.stockAudits.unshift(audit);
+    if (appState.stockAudits.length > 500) appState.stockAudits = appState.stockAudits.slice(0, 500);
+
+    saveAppState();
+    renderInventoryView();
+
+    const diffStr = audit.variance > 0 ? `+${audit.variance}` : `${audit.variance}`;
+    alert(`Stock Reconciled!\n${audit.itemName}: Stock adjusted to ${audit.physicalCount} ${audit.uom} (Variance: ${diffStr} ${audit.uom}).`);
+  }
+}
+
+/**
+ * Loads official sample raw materials and recipe BOMs into appState.
+ */
+function loadSampleInventoryData() {
+  if (confirm("Load official The Retro Cafeteria raw materials list and standard recipe BOMs?\nExisting custom materials will be merged.")) {
+    if (typeof PosInventory === "undefined") {
+      alert("Inventory module not loaded.");
+      return;
+    }
+
+    if (!Array.isArray(appState.inventory)) appState.inventory = [];
+    if (!Array.isArray(appState.recipes)) appState.recipes = [];
+
+    // Merge sample raw items
+    PosInventory.SAMPLE_INVENTORY_ITEMS.forEach(sampleItem => {
+      if (!appState.inventory.some(i => i.id === sampleItem.id || i.code === sampleItem.code)) {
+        appState.inventory.push({ ...sampleItem });
+      }
+    });
+
+    // Merge sample recipes
+    PosInventory.SAMPLE_RECIPES.forEach(sampleRecipe => {
+      if (!appState.recipes.some(r => r.dishId === sampleRecipe.dishId)) {
+        appState.recipes.push({
+          dishId: sampleRecipe.dishId,
+          ingredients: sampleRecipe.ingredients.map(ing => ({ ...ing }))
+        });
+      }
+    });
+
+    saveAppState();
+    renderInventoryView();
+    alert("The Retro Cafeteria sample raw materials and recipe BOMs loaded successfully!");
+  }
+}
+
+/**
+ * Exports current raw materials inventory to a downloadable CSV file.
+ */
+function exportInventoryCSVDownload() {
+  if (typeof PosInventory === "undefined" || !Array.isArray(appState.inventory)) {
+    alert("No inventory data to export.");
+    return;
+  }
+
+  const csv = PosInventory.exportInventoryCSV(appState.inventory);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+  link.setAttribute("href", url);
+  link.setAttribute("download", `retro_cafeteria_inventory_${dateStr}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
