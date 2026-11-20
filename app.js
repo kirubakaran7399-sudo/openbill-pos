@@ -395,26 +395,261 @@ function updateHeaderBadges() {
 }
 
 /**
- * Refreshes Home summary KPI cards.
+ * Refreshes Home summary KPI cards, operational metrics, recent bills & top sellers.
  */
 function refreshHomeStats() {
+  const todayStr = PosStorage.getLocalDateString();
   const report = PosStorage.aggregateSalesSummary(appState.salesLedger, {
-    startDate: PosStorage.getLocalDateString()
+    startDate: todayStr
   });
 
-  document.getElementById("home-gross-sales").textContent = `₹${report.grossSales.toFixed(2)}`;
-  document.getElementById("home-bill-count").textContent = report.billCount;
-  document.getElementById("home-cash-sales").textContent = `₹${report.payments.cash.total.toFixed(2)}`;
-  document.getElementById("home-cash-count").textContent = report.payments.cash.count;
+  // 1. Shift Header
+  const cashierLabel = document.getElementById("home-cashier-label");
+  if (cashierLabel) {
+    cashierLabel.textContent = currentUser ? currentUser.name : (appState.store?.cashierName || "Store Owner");
+  }
+  const shiftDate = document.getElementById("home-shift-date");
+  if (shiftDate) {
+    const now = new Date();
+    shiftDate.textContent = now.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  // 2. Order Launchers Badges
+  const nextToken = appState.dailyTokenCounter || 1;
+  const tokenBadge = document.getElementById("home-token-badge");
+  if (tokenBadge) {
+    tokenBadge.textContent = `Token #${nextToken}`;
+  }
+
+  const occupiedTables = Object.keys(appState.openOrders || {}).length;
+  const totalTables = (appState.tables || []).filter(t => t.isActive).length || 12;
+  const tablesBadge = document.getElementById("home-tables-badge");
+  if (tablesBadge) {
+    tablesBadge.textContent = `${occupiedTables}/${totalTables} Active`;
+    if (occupiedTables > 0) {
+      tablesBadge.className = "text-[11px] font-bold font-mono px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900";
+    } else {
+      tablesBadge.className = "text-[11px] font-bold font-mono px-2 py-0.5 rounded-lg bg-stone-100 text-[#5C534B]";
+    }
+  }
+
+  const homeTableStatus = document.getElementById("home-tables-status");
+  if (homeTableStatus) {
+    homeTableStatus.textContent = occupiedTables > 0 ? `${occupiedTables} Table(s) Active` : "Select Table";
+  }
+
+  // 3. Financial Telemetry
+  const grossSalesEl = document.getElementById("home-gross-sales");
+  if (grossSalesEl) grossSalesEl.textContent = `₹${report.grossSales.toFixed(2)}`;
+  
+  const billCountEl = document.getElementById("home-bill-count");
+  if (billCountEl) billCountEl.textContent = report.billCount;
+  
+  const avgTicket = report.billCount > 0 ? (report.grossSales / report.billCount) : 0;
+  const avgTicketEl = document.getElementById("home-avg-ticket");
+  if (avgTicketEl) avgTicketEl.textContent = `₹${avgTicket.toFixed(2)}`;
+
+  const cashSalesEl = document.getElementById("home-cash-sales");
+  if (cashSalesEl) cashSalesEl.textContent = `₹${report.payments.cash.total.toFixed(2)}`;
+  
+  const cashCountEl = document.getElementById("home-cash-count");
+  if (cashCountEl) cashCountEl.textContent = report.payments.cash.count;
+  
+  const cashPct = report.grossSales > 0 ? Math.round((report.payments.cash.total / report.grossSales) * 100) : 0;
+  const cashPctEl = document.getElementById("home-cash-pct");
+  if (cashPctEl) cashPctEl.textContent = `${cashPct}%`;
+
   const digitalTotal = report.payments.upi.total + report.payments.card.total;
   const digitalCount = report.payments.upi.count + report.payments.card.count;
-  document.getElementById("home-digital-sales").textContent = `₹${digitalTotal.toFixed(2)}`;
-  document.getElementById("home-digital-count").textContent = digitalCount;
-  document.getElementById("home-gst-total").textContent = `₹${report.totalTax.toFixed(2)}`;
-  document.getElementById("home-cgst").textContent = report.cgst.toFixed(2);
-  document.getElementById("home-sgst").textContent = report.sgst.toFixed(2);
+  const digitalSalesEl = document.getElementById("home-digital-sales");
+  if (digitalSalesEl) digitalSalesEl.textContent = `₹${digitalTotal.toFixed(2)}`;
+  
+  const digitalCountEl = document.getElementById("home-digital-count");
+  if (digitalCountEl) digitalCountEl.textContent = digitalCount;
+  
+  const digPct = report.grossSales > 0 ? Math.round((digitalTotal / report.grossSales) * 100) : 0;
+  const digPctEl = document.getElementById("home-digital-pct");
+  if (digPctEl) digPctEl.textContent = `${digPct}%`;
+
+  const gstTotalEl = document.getElementById("home-gst-total");
+  if (gstTotalEl) gstTotalEl.textContent = `₹${report.totalTax.toFixed(2)}`;
+  
+  const cgstEl = document.getElementById("home-cgst");
+  if (cgstEl) cgstEl.textContent = report.cgst.toFixed(2);
+  
+  const sgstEl = document.getElementById("home-sgst");
+  if (sgstEl) sgstEl.textContent = report.sgst.toFixed(2);
+
+  // 4. Low Stock Alert Banner
+  renderHomeStockAlert();
+
+  // 5. Recent Bills Today
+  renderHomeRecentBills();
+
+  // 6. Top Selling Dishes Today
+  renderHomeTopSellers();
 
   updateHeaderBadges();
+}
+
+/**
+ * Renders dynamic stock health alert banner on Home.
+ */
+function renderHomeStockAlert() {
+  const container = document.getElementById("home-stock-alert-wrap");
+  if (!container) return;
+
+  const lowRawItems = (appState.inventory || []).filter(item => (item.currentStock || 0) <= (item.reorderLevel || 0));
+  const lowDishes = (appState.products || []).filter(p => p.trackStock && (p.stockQty || 0) <= (p.lowStockThreshold || 5));
+  const totalLow = lowRawItems.length + lowDishes.length;
+
+  if (totalLow === 0) {
+    container.className = "hidden";
+    container.innerHTML = "";
+    return;
+  }
+
+  const sampleNames = [...lowRawItems.map(i => i.name), ...lowDishes.map(p => p.name)].slice(0, 3).join(", ");
+  container.className = "p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-xs";
+  container.innerHTML = `
+    <div class="flex items-center gap-2.5">
+      <span class="w-8 h-8 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-[18px]">warning</span>
+      </span>
+      <div>
+        <span class="font-bold">Low Stock Warning: ${totalLow} item(s) below reorder threshold.</span>
+        <p class="text-[11px] text-amber-800 mt-0.5">${escapeHtml(sampleNames)}${totalLow > 3 ? '...' : ''}</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="navigateTo('inventory')" class="px-3 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white font-bold text-xs flex items-center gap-1 shadow-xs whitespace-nowrap cursor-pointer">
+        <span>Manage Stock</span>
+        <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+      </button>
+    </div>
+  `;
+}
+
+/**
+ * Renders the 5 most recent bills on the Home Dashboard with 1-click reprint.
+ */
+function renderHomeRecentBills() {
+  const tbody = document.getElementById("home-recent-bills-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const ledger = appState.salesLedger || [];
+  const recentBills = ledger.slice(0, 5);
+
+  if (recentBills.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="p-8 text-center text-[#5C534B]">
+          <span class="material-symbols-outlined text-[32px] text-stone-300 block mb-1">receipt_long</span>
+          <span class="font-bold text-[#171717] block">No bills recorded yet today</span>
+          <span class="text-[11px]">Press <kbd class="px-1 py-0.5 rounded bg-stone-200 font-mono font-bold">F1</kbd> to start your first counter sale!</span>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  recentBills.forEach(bill => {
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-[#FCFAF8] transition-colors";
+
+    const payModeBadge = bill.isComplimentary
+      ? `<span class="px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 font-bold text-[10px]">NC FREE</span>`
+      : bill.paymentMode === "cash"
+      ? `<span class="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]">CASH</span>`
+      : bill.paymentMode === "upi"
+      ? `<span class="px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-bold text-[10px]">UPI</span>`
+      : `<span class="px-1.5 py-0.5 rounded-md bg-stone-200 text-[#171717] font-bold text-[10px] uppercase">${bill.paymentMode || 'CARD'}</span>`;
+
+    const typeLabel = bill.orderType === "dinein"
+      ? `<span class="flex items-center gap-1 text-[#6B4226] font-semibold"><span class="material-symbols-outlined text-[14px]">table_restaurant</span>${escapeHtml(bill.tableName || 'Dine-in')}</span>`
+      : bill.orderType === "takeaway"
+      ? `<span class="flex items-center gap-1 text-[#171717] font-semibold"><span class="material-symbols-outlined text-[14px]">takeout_dining</span>Takeaway</span>`
+      : `<span class="flex items-center gap-1 text-[#171717] font-semibold"><span class="material-symbols-outlined text-[14px]">point_of_sale</span>Counter</span>`;
+
+    const timeDisplay = (bill.timestamp || bill.time || '').slice(11, 16) || (bill.timestamp || bill.time || 'Today');
+
+    tr.innerHTML = `
+      <td class="p-3 font-mono font-bold text-[#171717]">
+        ${escapeHtml(bill.billNo)}
+        ${bill.isCancelled ? '<span class="text-red-600 text-[10px] block font-sans font-bold">CANCELLED</span>' : ''}
+      </td>
+      <td class="p-3 text-[#5C534B] text-[11px] font-mono">${escapeHtml(timeDisplay)}</td>
+      <td class="p-3">${typeLabel}</td>
+      <td class="p-3 text-right font-mono font-extrabold text-[#171717]">₹${(bill.grandTotal || 0).toFixed(2)}</td>
+      <td class="p-3 text-center">${payModeBadge}</td>
+      <td class="p-3 text-right">
+        <div class="flex items-center justify-end gap-1">
+          <button onclick="reprintBill('${escapeHtml(bill.billNo)}')" class="px-2 py-1 rounded-lg bg-[#F6F2EC] hover:bg-[#171717] hover:text-white text-[11px] font-semibold transition-all flex items-center gap-0.5 cursor-pointer active:scale-95" title="Quick Reprint Thermal Receipt">
+            <span class="material-symbols-outlined text-[13px]">print</span> Reprint
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/**
+ * Computes and renders the top 3 selling dishes today on Home.
+ */
+function renderHomeTopSellers() {
+  const container = document.getElementById("home-top-sellers-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const todayStr = PosStorage.getLocalDateString();
+  const todayBills = (appState.salesLedger || []).filter(b => !b.isCancelled && (b.date === todayStr || (b.timestamp && b.timestamp.startsWith(todayStr))));
+
+  // If no bills today, fallback to recent 10 bills to show popular dishes
+  const billsToAnalyze = todayBills.length > 0 ? todayBills : (appState.salesLedger || []).filter(b => !b.isCancelled).slice(0, 10);
+
+  const countMap = {};
+  billsToAnalyze.forEach(b => {
+    (b.items || []).forEach(it => {
+      if (it && it.name) {
+        countMap[it.name] = (countMap[it.name] || 0) + (it.qty || 1);
+      }
+    });
+  });
+
+  const sortedDishes = Object.keys(countMap)
+    .map(name => ({ name, count: countMap[name] }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
+  if (sortedDishes.length === 0) {
+    container.innerHTML = `
+      <div class="p-3 text-center text-[#5C534B] text-xs">
+        <span>No dish orders recorded yet today.</span>
+      </div>
+    `;
+    return;
+  }
+
+  sortedDishes.forEach((item, idx) => {
+    const rankColors = [
+      "bg-amber-400 text-amber-950",
+      "bg-stone-300 text-stone-900",
+      "bg-amber-700 text-white"
+    ];
+    const rankBadge = rankColors[idx] || "bg-stone-200 text-stone-800";
+    const div = document.createElement("div");
+    div.className = "flex items-center justify-between p-2 rounded-xl bg-[#FCFAF8] border border-[#E5DDD3]";
+    div.innerHTML = `
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="w-5 h-5 rounded-full ${rankBadge} text-[10px] font-mono font-extrabold flex items-center justify-center shrink-0">#${idx + 1}</span>
+        <span class="text-xs font-bold text-[#171717] truncate">${escapeHtml(item.name)}</span>
+      </div>
+      <span class="text-xs font-mono font-bold text-[#C82026] shrink-0">${item.count} sold</span>
+    `;
+    container.appendChild(div);
+  });
 }
 
 // -------------------------------------------------------------

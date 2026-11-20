@@ -234,150 +234,274 @@
     <!-- MAIN VIEWPORT CONTAINER -->
     <main id="main-viewport" class="flex-1 flex overflow-hidden relative">
 
-    <!-- VIEW 1: HOME LAUNCHER (Spec §7.2) -->
-    <section id="view-home" class="view-panel w-full h-full p-6 overflow-y-auto flex flex-col gap-6 max-w-7xl mx-auto">
-      <!-- Welcome Hero -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-[#E5DDD3] shadow-sm">
-        <div>
-          <h1 class="text-2xl font-extrabold text-[#171717]">The Retro Cafeteria</h1>
-          <p class="text-sm text-[#5C534B] mt-0.5">High-speed billing terminal, tax invoices & thermal receipt print.</p>
+    <!-- VIEW 1: HOME LAUNCHER & OPERATIONS DASHBOARD -->
+    <section id="view-home" class="view-panel w-full h-full p-5 lg:p-6 overflow-y-auto flex flex-col gap-5 max-w-7xl mx-auto">
+      
+      <!-- 1. Operational Shift Header -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-xs">
+        <div class="flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-xl bg-[#171717] text-white flex items-center justify-center shrink-0 shadow-sm">
+            <span class="material-symbols-outlined text-[24px]">storefront</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg md:text-xl font-extrabold text-[#171717]">The Retro Cafeteria</h1>
+              <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">Shift Active</span>
+            </div>
+            <p class="text-xs text-[#5C534B] mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span>Logged in as <strong id="home-cashier-label" class="text-[#171717]">Store Owner</strong></span>
+              <span>•</span>
+              <span id="home-shift-date">Today's Register</span>
+              <span>•</span>
+              <span class="text-emerald-700 font-semibold flex items-center gap-0.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block"></span> Local DB Ready</span>
+            </p>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Local Database Active
-          </span>
-          <button onclick="exportLocalBackup()" class="btn-secondary !min-h-[38px] !py-1.5 !text-xs">
-            <span class="material-symbols-outlined text-[16px]">cloud_download</span> Backup Now
+
+        <!-- Shift Quick Actions -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="printDailyZReport()" class="btn-secondary !min-h-[36px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 border border-[#E5DDD3]" title="Print End-of-Day Z-Report">
+            <span class="material-symbols-outlined text-[16px]">receipt_long</span> Day Close (Z-Report)
+          </button>
+          <button onclick="shareWhatsAppSummary()" class="btn-secondary !min-h-[36px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100" title="Send Daily Financial Summary to Owner">
+            <span class="material-symbols-outlined text-[16px]">send</span> WhatsApp Summary
+          </button>
+          <button onclick="exportLocalBackup()" class="btn-secondary !min-h-[36px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5 border border-[#E5DDD3]" title="Backup Local POS Database">
+            <span class="material-symbols-outlined text-[16px]">cloud_download</span> Backup
           </button>
         </div>
       </div>
 
-      <!-- Big Order Launchers (Spec §7.2) -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- 2. Big Order Launchers (3-Column Action Hub) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Counter Sale Tile -->
-        <div onclick="startNewOrder('counter')" class="bg-white p-6 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-sm hover:shadow-md flex flex-col justify-between group h-52">
+        <div onclick="startNewOrder('counter')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-xs hover:shadow-md flex flex-col justify-between group active:scale-[0.99]">
           <div>
             <div class="flex items-center justify-between">
-              <div class="w-12 h-12 rounded-xl bg-[#171717] text-white flex items-center justify-center">
-                <span class="material-symbols-outlined text-[26px]">storefront</span>
+              <div class="w-11 h-11 rounded-xl bg-[#171717] text-white flex items-center justify-center shadow-xs">
+                <span class="material-symbols-outlined text-[24px]">point_of_sale</span>
               </div>
-              <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2.5 py-1 rounded-md text-[#5C534B]">F1</span>
+              <div class="flex items-center gap-1.5">
+                <span id="home-token-badge" class="text-[11px] font-bold font-mono px-2 py-0.5 rounded-lg bg-[#EFE3D6] text-[#6B4226]">Token #1</span>
+                <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2 py-0.5 rounded-lg text-[#5C534B]">F1</span>
+              </div>
             </div>
-            <h2 class="text-xl font-extrabold text-[#171717] mt-4">Counter Sale</h2>
-            <p class="text-xs text-[#5C534B] mt-1">Instant walk-in sale. Daily token resets to #1. 3-step rapid checkout.</p>
+            <h2 class="text-lg font-extrabold text-[#171717] mt-3 group-hover:text-[#C82026] transition-colors">Counter Sale</h2>
+            <p class="text-xs text-[#5C534B] mt-1">Direct walk-in checkout. 3-step billing with auto UPI QR and thermal print.</p>
           </div>
-          <div class="flex items-center justify-between pt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026]">
+          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026]">
             <span>Start Counter Order</span>
-            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </div>
         </div>
 
         <!-- Dine-in Tables Tile -->
-        <div onclick="navigateTo('tables')" class="bg-white p-6 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#6B4226] cursor-pointer transition-all shadow-sm hover:shadow-md flex flex-col justify-between group h-52">
+        <div onclick="navigateTo('tables')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-xs hover:shadow-md flex flex-col justify-between group active:scale-[0.99]">
           <div>
             <div class="flex items-center justify-between">
-              <div class="w-12 h-12 rounded-xl bg-[#6B4226] text-white flex items-center justify-center">
-                <span class="material-symbols-outlined text-[26px]">table_restaurant</span>
+              <div class="w-11 h-11 rounded-xl bg-[#6B4226] text-white flex items-center justify-center shadow-xs">
+                <span class="material-symbols-outlined text-[24px]">table_restaurant</span>
               </div>
-              <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2.5 py-1 rounded-md text-[#5C534B]">F2</span>
+              <div class="flex items-center gap-1.5">
+                <span id="home-tables-badge" class="text-[11px] font-bold font-mono px-2 py-0.5 rounded-lg bg-stone-100 text-[#5C534B]">0/12 Active</span>
+                <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2 py-0.5 rounded-lg text-[#5C534B]">F2</span>
+              </div>
             </div>
-            <h2 class="text-xl font-extrabold text-[#171717] mt-4">Dine-in Tables</h2>
-            <p class="text-xs text-[#5C534B] mt-1">12 floor tables across Main Hall and AC Section. Multi-round ordering & KOT.</p>
+            <h2 class="text-lg font-extrabold text-[#171717] mt-3 group-hover:text-[#6B4226] transition-colors">Dine-in Floor Plan</h2>
+            <p class="text-xs text-[#5C534B] mt-1">Main Hall & AC Section tables. Multi-round KOT kitchen tickets & table transfers.</p>
           </div>
-          <div class="flex items-center justify-between pt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#6B4226]">
+          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#6B4226]">
             <span id="home-tables-status">Select Table</span>
-            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </div>
         </div>
 
         <!-- Takeaway Tile -->
-        <div onclick="startNewOrder('takeaway')" class="bg-white p-6 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-sm hover:shadow-md flex flex-col justify-between group h-52">
+        <div onclick="startNewOrder('takeaway')" class="bg-white p-5 rounded-2xl border-2 border-[#E5DDD3] hover:border-[#171717] cursor-pointer transition-all shadow-xs hover:shadow-md flex flex-col justify-between group active:scale-[0.99]">
           <div>
             <div class="flex items-center justify-between">
-              <div class="w-12 h-12 rounded-xl bg-[#171717] text-white flex items-center justify-center">
-                <span class="material-symbols-outlined text-[26px]">takeout_dining</span>
+              <div class="w-11 h-11 rounded-xl bg-[#171717] text-white flex items-center justify-center shadow-xs">
+                <span class="material-symbols-outlined text-[24px]">takeout_dining</span>
               </div>
-              <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2.5 py-1 rounded-md text-[#5C534B]">F3</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] font-bold font-mono px-2 py-0.5 rounded-lg bg-[#EFE3D6] text-[#6B4226]">Parcel</span>
+                <span class="text-xs font-mono font-bold bg-[#F6F2EC] px-2 py-0.5 rounded-lg text-[#5C534B]">F3</span>
+              </div>
             </div>
-            <h2 class="text-xl font-extrabold text-[#171717] mt-4">Takeaway Parcel</h2>
-            <p class="text-xs text-[#5C534B] mt-1">Parcel order with customer name, phone and hold-for-pickup option.</p>
+            <h2 class="text-lg font-extrabold text-[#171717] mt-3 group-hover:text-[#C82026] transition-colors">Takeaway Parcel</h2>
+            <p class="text-xs text-[#5C534B] mt-1">Packed food orders with customer name, phone, parcel token & kitchen dispatch.</p>
           </div>
-          <div class="flex items-center justify-between pt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026]">
+          <div class="flex items-center justify-between pt-3 mt-3 border-t border-[#F6F2EC] text-xs font-bold text-[#171717] group-hover:text-[#C82026]">
             <span>New Takeaway</span>
-            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </div>
         </div>
       </div>
 
-      <!-- Today's Financial & Shift Dashboard -->
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <!-- 3. Financial Telemetry Cards (4-Column KPI Grid) -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <!-- Sales Card -->
-        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col justify-between">
+        <div class="bg-white p-4 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col justify-between">
           <div class="flex items-center justify-between text-[#5C534B]">
-            <span class="text-xs font-semibold uppercase tracking-wider">Today's Sales</span>
-            <span class="material-symbols-outlined text-[20px] text-emerald-600">payments</span>
+            <span class="text-[11px] font-bold uppercase tracking-wider">Today's Revenue</span>
+            <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]">payments</span>
+            </span>
           </div>
-          <div class="mt-3">
-            <span class="text-3xl font-extrabold font-mono text-[#171717]" id="home-gross-sales">₹0.00</span>
-            <p class="text-xs text-[#5C534B] mt-1"><span id="home-bill-count">0</span> bills settled today</p>
+          <div class="mt-2.5">
+            <span class="text-2xl md:text-3xl font-extrabold font-mono text-[#171717]" id="home-gross-sales">₹0.00</span>
+            <p class="text-[11px] text-[#5C534B] mt-0.5 flex items-center justify-between">
+              <span><span id="home-bill-count">0</span> bills settled</span>
+              <span>Avg: <strong id="home-avg-ticket" class="text-[#171717] font-mono">₹0.00</strong></span>
+            </p>
           </div>
         </div>
 
         <!-- Cash in Drawer -->
-        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col justify-between">
+        <div class="bg-white p-4 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col justify-between">
           <div class="flex items-center justify-between text-[#5C534B]">
-            <span class="text-xs font-semibold uppercase tracking-wider">Cash Tendered</span>
-            <span class="material-symbols-outlined text-[20px] text-amber-700">attach_money</span>
+            <span class="text-[11px] font-bold uppercase tracking-wider">Cash in Drawer</span>
+            <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]">attach_money</span>
+            </span>
           </div>
-          <div class="mt-3">
+          <div class="mt-2.5">
             <span class="text-2xl font-bold font-mono text-[#171717]" id="home-cash-sales">₹0.00</span>
-            <p class="text-xs text-[#5C534B] mt-1"><span id="home-cash-count">0</span> cash bills</p>
+            <p class="text-[11px] text-[#5C534B] mt-0.5 flex items-center justify-between">
+              <span><span id="home-cash-count">0</span> cash bills</span>
+              <span id="home-cash-pct" class="font-bold text-amber-700">0%</span>
+            </p>
           </div>
         </div>
 
         <!-- UPI & Digital Payments -->
-        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col justify-between">
+        <div class="bg-white p-4 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col justify-between">
           <div class="flex items-center justify-between text-[#5C534B]">
-            <span class="text-xs font-semibold uppercase tracking-wider">UPI & Card</span>
-            <span class="material-symbols-outlined text-[20px] text-blue-600">qr_code_scanner</span>
+            <span class="text-[11px] font-bold uppercase tracking-wider">UPI & Digital</span>
+            <span class="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]">qr_code_2</span>
+            </span>
           </div>
-          <div class="mt-3">
+          <div class="mt-2.5">
             <span class="text-2xl font-bold font-mono text-[#171717]" id="home-digital-sales">₹0.00</span>
-            <p class="text-xs text-[#5C534B] mt-1"><span id="home-digital-count">0</span> digital payments</p>
+            <p class="text-[11px] text-[#5C534B] mt-0.5 flex items-center justify-between">
+              <span><span id="home-digital-count">0</span> digital payments</span>
+              <span id="home-digital-pct" class="font-bold text-blue-700">0%</span>
+            </p>
           </div>
         </div>
 
         <!-- GST Collected -->
-        <div class="bg-white p-5 rounded-2xl border border-[#E5DDD3] shadow-sm flex flex-col justify-between">
+        <div class="bg-white p-4 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col justify-between">
           <div class="flex items-center justify-between text-[#5C534B]">
-            <span class="text-xs font-semibold uppercase tracking-wider">5% GST Collected</span>
-            <span class="material-symbols-outlined text-[20px] text-purple-600">account_balance</span>
+            <span class="text-[11px] font-bold uppercase tracking-wider">5% GST Collected</span>
+            <span class="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]">account_balance</span>
+            </span>
           </div>
-          <div class="mt-3">
+          <div class="mt-2.5">
             <span class="text-2xl font-bold font-mono text-[#171717]" id="home-gst-total">₹0.00</span>
-            <p class="text-xs text-[#5C534B] mt-1">CGST ₹<span id="home-cgst">0.00</span> + SGST ₹<span id="home-sgst">0.00</span></p>
+            <p class="text-[11px] text-[#5C534B] mt-0.5 font-mono">
+              CGST ₹<span id="home-cgst">0.00</span> | SGST ₹<span id="home-sgst">0.00</span>
+            </p>
           </div>
         </div>
       </div>
 
-      <!-- Quick Action Buttons -->
-      <div class="flex flex-wrap gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-[#E5DDD3]">
-        <div class="flex flex-wrap gap-2">
-          <button onclick="navigateTo('pos')" class="btn-primary !min-h-[42px] !py-2 !text-xs">
-            <span class="material-symbols-outlined text-[18px]">add_shopping_cart</span> Open Register
-          </button>
-          <button onclick="navigateTo('reports')" class="btn-secondary !min-h-[42px] !py-2 !text-xs">
-            <span class="material-symbols-outlined text-[18px]">receipt</span> View Daily Z-Report
-          </button>
-          <button onclick="navigateTo('inventory')" class="btn-secondary !min-h-[42px] !py-2 !text-xs">
-            <span class="material-symbols-outlined text-[18px]">inventory_2</span> Raw Materials & Inventory
-          </button>
-          <button onclick="testThermalPrint()" class="btn-secondary !min-h-[42px] !py-2 !text-xs">
-            <span class="material-symbols-outlined text-[18px]">print</span> Test Thermal Printer
-          </button>
+      <!-- 4. Low Stock Alert Banner (Dynamic) -->
+      <div id="home-stock-alert-wrap" class="hidden">
+        <!-- Populated dynamically by refreshHomeStats() -->
+      </div>
+
+      <!-- 5. Operational Activity & Insights Grid (Recent Bills + Top Sellers & Shortcuts) -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        
+        <!-- Left 2 Cols: Recent Transactions Today (The #1 requested live feature) -->
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col overflow-hidden">
+          <div class="p-4 border-b border-[#E5DDD3] flex items-center justify-between bg-[#FCFAF8]">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[20px] text-[#6B4226]">history</span>
+              <h3 class="text-sm font-extrabold text-[#171717]">Recent Bills Today</h3>
+            </div>
+            <button onclick="navigateTo('history')" class="text-xs font-bold text-[#C82026] hover:underline flex items-center gap-0.5 cursor-pointer" title="View Full Sales History">
+              <span>View All History</span>
+              <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </button>
+          </div>
+
+          <!-- Recent Bills Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-[#F6F2EC] text-[#5C534B] font-bold border-b border-[#E5DDD3]">
+                <tr>
+                  <th class="p-3 font-mono">Bill #</th>
+                  <th class="p-3">Time</th>
+                  <th class="p-3">Order Type</th>
+                  <th class="p-3 font-mono text-right">Amount</th>
+                  <th class="p-3 text-center">Payment</th>
+                  <th class="p-3 text-right">Quick Action</th>
+                </tr>
+              </thead>
+              <tbody id="home-recent-bills-tbody" class="divide-y divide-[#F6F2EC]">
+                <!-- Populated dynamically by refreshHomeStats() -->
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="text-xs text-[#5C534B]">
-          Press <kbd class="px-1.5 py-0.5 bg-[#F6F2EC] border border-[#E5DDD3] rounded font-mono font-bold">?</kbd> for keyboard shortcuts
+
+        <!-- Right 1 Col: Top Sellers & Essential Hotkeys -->
+        <div class="flex flex-col gap-4">
+          <!-- Top Selling Dishes Today -->
+          <div class="bg-white p-4.5 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col gap-3">
+            <div class="flex items-center justify-between border-b border-[#F6F2EC] pb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-amber-600">local_fire_department</span>
+                <h3 class="text-xs font-extrabold text-[#171717] uppercase tracking-wider">Top Selling Dishes</h3>
+              </div>
+              <span class="text-[11px] text-[#5C534B]">Today</span>
+            </div>
+            <div id="home-top-sellers-list" class="flex flex-col gap-2">
+              <!-- Populated dynamically by refreshHomeStats() -->
+            </div>
+          </div>
+
+          <!-- POS Hotkey Reference Box -->
+          <div class="bg-[#FCFAF8] p-4.5 rounded-2xl border border-[#E5DDD3] shadow-xs flex flex-col gap-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-[#171717] flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px] text-[#5C534B]">keyboard</span> Quick POS Hotkeys
+              </span>
+              <button onclick="testThermalPrint()" class="text-[11px] font-semibold text-[#6B4226] hover:underline flex items-center gap-0.5 cursor-pointer">
+                <span class="material-symbols-outlined text-[13px]">print</span> Test Slip
+              </button>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
+                <span class="text-[#5C534B]">Counter Order</span>
+                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F1</kbd>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
+                <span class="text-[#5C534B]">Floor Tables</span>
+                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F2</kbd>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
+                <span class="text-[#5C534B]">Takeaway</span>
+                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F3</kbd>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
+                <span class="text-[#5C534B]">Kitchen KOT</span>
+                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F6</kbd>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
+                <span class="text-[#5C534B]">Held Orders</span>
+                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#F6F2EC] text-[#171717]">F9</kbd>
+              </div>
+              <div class="flex items-center justify-between p-1.5 rounded-lg bg-white border border-[#E5DDD3]">
+                <span class="text-[#5C534B]">Pay & Print</span>
+                <kbd class="font-mono font-bold px-1.5 py-0.5 rounded bg-[#171717] text-white">F12</kbd>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
